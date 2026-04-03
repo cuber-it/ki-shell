@@ -235,6 +235,19 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 			return resp.Text, nil
 		}
 
+		// Deduplicate
+		{
+			seen := make(map[string]bool)
+			var unique []string
+			for _, a := range actions {
+				if !seen[a] {
+					seen[a] = true
+					unique = append(unique, a)
+				}
+			}
+			actions = unique
+		}
+
 		vPrint(1, "KI requested %d action(s)", len(actions))
 
 		// Execute actions

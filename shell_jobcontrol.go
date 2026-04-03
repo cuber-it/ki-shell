@@ -64,24 +64,14 @@ func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			stderr = tw.file
 		}
 
-		// Only set Foreground/Ctty in interactive mode when stdin is the real terminal.
-		sysproc := &syscall.SysProcAttr{Setpgid: true}
-		if isInteractiveMode {
-			if f, ok := hc.Stdin.(*os.File); ok && f.Fd() == os.Stdin.Fd() {
-				sysproc.Foreground = true
-				sysproc.Ctty = int(os.Stdin.Fd())
-			}
-		}
-
 		cmd := exec.Cmd{
-			Path:        path,
-			Args:        args,
-			Env:         execEnv(hc.Env),
-			Dir:         hc.Dir,
-			Stdin:       hc.Stdin,
-			Stdout:      stdout,
-			Stderr:      stderr,
-			SysProcAttr: sysproc,
+			Path:   path,
+			Args:   args,
+			Env:    execEnv(hc.Env),
+			Dir:    hc.Dir,
+			Stdin:  hc.Stdin,
+			Stdout: stdout,
+			Stderr: stderr,
 		}
 
 		err = cmd.Start()

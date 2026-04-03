@@ -21,9 +21,9 @@ import (
 	"github.com/ergochat/readline"
 	"golang.org/x/term"
 
-	"github.com/cuber-it/kish-sh/v3/expand"
-	"github.com/cuber-it/kish-sh/v3/interp"
-	"github.com/cuber-it/kish-sh/v3/syntax"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/expand"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/syntax"
 )
 
 const version = "0.0.1"
@@ -271,6 +271,8 @@ func runFile(runner *interp.Runner, path string) error {
 // ---------- Interactive REPL ----------
 
 func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) error {
+	isInteractiveMode = true
+	defer func() { isInteractiveMode = false }()
 	// Setup signal handling — shared channel, context-aware
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTSTP)

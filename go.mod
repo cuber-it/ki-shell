@@ -1,10 +1,10 @@
-module github.com/cuber-it/kish
+module github.com/cuber-it/ki-shell
 
 go 1.25.0
 
 require (
 	github.com/cuber-it/heinzel-ai-core-go v0.0.0
-	github.com/cuber-it/kish-sh/v3 v3.13.0
+	github.com/cuber-it/ki-shell/kish-sh/v3 v3.13.0
 	github.com/ergochat/readline v0.1.3
 	golang.org/x/term v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -24,6 +24,6 @@ require (
 	modernc.org/sqlite v1.48.0 // indirect
 )
 
-replace github.com/cuber-it/kish-sh/v3 => ../kish-sh
+replace github.com/cuber-it/ki-shell/kish-sh/v3 => ./kish-sh
 
 replace github.com/cuber-it/heinzel-ai-core-go => ../heinzel/heinzel-ai-core-go

@@ -24,6 +24,11 @@ coverage.html
 # Internal documentation
 intern/
 
+# kish-sh is a subdirectory module — include it
+!kish-sh/
+# but ignore its test artifacts
+kish-sh/**/*.test
+
 # Config with secrets (user-specific)
 # These are generated at runtime, not part of the repo
 config.yaml
@@ -36,3 +41,7 @@ vault/
 history
 history_ts
 sessions/
+
+# kish-sh build artifacts
+kish-sh/cmd/shfmt/shfmt
+kish-sh/cmd/gosh/gosh

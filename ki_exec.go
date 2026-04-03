@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cuber-it/kish-sh/v3/interp"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
 )
 
 // kiExecMiddleware intercepts the KI prefix command in pipes.

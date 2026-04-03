@@ -5,23 +5,40 @@ package main
 import (
 	"bytes"
 	"io"
+	"os"
 	"sync"
 )
 
 // TeeWriter writes to an underlying writer AND captures a copy in a buffer.
 // Used to capture stdout/stderr for the shell log while still showing output to the user.
+// Implements os.File-like interface so programs like vim detect a real terminal.
 type TeeWriter struct {
 	mu     sync.Mutex
 	writer io.Writer // original destination (os.Stdout / os.Stderr)
+	file   *os.File  // the underlying file (for Fd() — terminal detection)
 	buffer bytes.Buffer
 	limit  int // max bytes to capture (0 = unlimited)
+}
+
+// Fd returns the file descriptor of the underlying writer.
+// This is critical — programs like vim call isatty(fd) to detect terminals.
+func (tw *TeeWriter) Fd() uintptr {
+	if tw.file != nil {
+		return tw.file.Fd()
+	}
+	return 0
 }
 
 func newTeeWriter(writer io.Writer, limit int) *TeeWriter {
 	if limit == 0 {
 		limit = 64 * 1024 // 64KB default
 	}
-	return &TeeWriter{writer: writer, limit: limit}
+	tw := &TeeWriter{writer: writer, limit: limit}
+	// Preserve the underlying *os.File for terminal detection
+	if f, ok := writer.(*os.File); ok {
+		tw.file = f
+	}
+	return tw
 }
 
 func (tw *TeeWriter) Write(p []byte) (int, error) {

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cuber-it/kish-sh/v3/interp"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
 )
 
 // kishBuiltinsMiddleware intercepts kish-specific commands (ki, merke, erinnere, etc.)

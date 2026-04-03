@@ -12,8 +12,8 @@ import (
 
 	"github.com/ergochat/readline"
 
-	"github.com/cuber-it/kish-sh/v3/interp"
-	"github.com/cuber-it/kish-sh/v3/syntax"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
+	"github.com/cuber-it/ki-shell/kish-sh/v3/syntax"
 )
 
 // ContinuousMode runs an interactive dialog where everything goes through the KI.

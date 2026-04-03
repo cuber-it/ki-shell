@@ -167,4 +167,4 @@ Apache 2.0
 
 ## Author
 
-ucuber / cuber IT service — built with AI assistance (Claude)
+Ulrich Cuber / cuber IT service — built with AI assistance (Claude)

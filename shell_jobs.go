@@ -9,7 +9,6 @@ import (
 	"syscall"
 )
 
-// Job represents a background or suspended process
 type Job struct {
 	ID      int
 	PID     int
@@ -39,7 +38,6 @@ func (s JobStatus) String() string {
 	}
 }
 
-// JobTable tracks background and suspended jobs
 type JobTable struct {
 	mu     sync.Mutex
 	jobs   map[int]*Job
@@ -53,7 +51,6 @@ func newJobTable() *JobTable {
 	}
 }
 
-// Add registers a new job and returns its ID
 func (jt *JobTable) Add(pid int, command string, status JobStatus, proc *os.Process) int {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
@@ -69,7 +66,6 @@ func (jt *JobTable) Add(pid int, command string, status JobStatus, proc *os.Proc
 	return jobID
 }
 
-// List returns all active jobs
 func (jt *JobTable) List() []*Job {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
@@ -80,14 +76,12 @@ func (jt *JobTable) List() []*Job {
 	return result
 }
 
-// Get returns a job by ID
 func (jt *JobTable) Get(jobID int) *Job {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
 	return jt.jobs[jobID]
 }
 
-// Last returns the most recently added job
 func (jt *JobTable) Last() *Job {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
@@ -100,14 +94,12 @@ func (jt *JobTable) Last() *Job {
 	return latest
 }
 
-// Remove deletes a job from the table
 func (jt *JobTable) Remove(jobID int) {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
 	delete(jt.jobs, jobID)
 }
 
-// UpdateStatus checks if jobs have finished and updates their status
 func (jt *JobTable) UpdateStatus() {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
@@ -116,7 +108,7 @@ func (jt *JobTable) UpdateStatus() {
 			var ws syscall.WaitStatus
 			pid, err := syscall.Wait4(job.PID, &ws, syscall.WNOHANG, nil)
 			if err != nil || pid == 0 {
-				continue // still running or error
+				continue
 			}
 			if ws.Exited() || ws.Signaled() {
 				job.Status = JobDone
@@ -128,7 +120,6 @@ func (jt *JobTable) UpdateStatus() {
 	}
 }
 
-// CleanDone removes finished jobs from the table
 func (jt *JobTable) CleanDone() {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
@@ -139,7 +130,6 @@ func (jt *JobTable) CleanDone() {
 	}
 }
 
-// PrintJobs outputs the job table (for the `jobs` builtin)
 func (jt *JobTable) PrintJobs() {
 	jt.mu.Lock()
 	defer jt.mu.Unlock()
@@ -148,7 +138,6 @@ func (jt *JobTable) PrintJobs() {
 	}
 }
 
-// ContinueFg brings a job to the foreground (sends SIGCONT)
 func (jt *JobTable) ContinueFg(jobID int) error {
 	jt.mu.Lock()
 	job := jt.jobs[jobID]
@@ -159,17 +148,12 @@ func (jt *JobTable) ContinueFg(jobID int) error {
 	if job.Status == JobStopped {
 		syscall.Kill(job.PID, syscall.SIGCONT)
 	}
-	// Wait for the process
 	var ws syscall.WaitStatus
 	_, err := syscall.Wait4(job.PID, &ws, 0, nil)
 	jt.Remove(jobID)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-// ContinueBg resumes a stopped job in the background (sends SIGCONT)
 func (jt *JobTable) ContinueBg(jobID int) error {
 	jt.mu.Lock()
 	job := jt.jobs[jobID]

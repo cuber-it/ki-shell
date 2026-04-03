@@ -19,13 +19,11 @@ type kishCompleter struct {
 	specs        map[string]*CompletionSpec
 }
 
-// CompletionSpec defines completions for a command, loaded from YAML.
 type CompletionSpec struct {
-	Subcommands []string                      `yaml:"subcommands"`
-	Args        map[string]interface{}         `yaml:"args"` // string = shell command, map = nested spec
+	Subcommands []string              `yaml:"subcommands"`
+	Args        map[string]interface{} `yaml:"args"`
 }
 
-// shellKeywords for tab completion
 var shellKeywords = map[string]bool{
 	"if": true, "then": true, "else": true, "elif": true, "fi": true,
 	"for": true, "while": true, "until": true, "do": true, "done": true,
@@ -51,7 +49,6 @@ func newCompleter() *kishCompleter {
 	return comp
 }
 
-// loadSpecs reads all YAML completion specs from ~/.kish/completions/
 func (c *kishCompleter) loadSpecs() {
 	dir := filepath.Join(kishDir(), "completions")
 	entries, err := os.ReadDir(dir)
@@ -78,7 +75,6 @@ func (c *kishCompleter) loadSpecs() {
 func (c *kishCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) {
 	lineStr := string(line[:pos])
 
-	// Find current word
 	wordStart := pos
 	for wordStart > 0 && line[wordStart-1] != ' ' && line[wordStart-1] != '|' && line[wordStart-1] != ';' && line[wordStart-1] != '&' {
 		wordStart--
@@ -94,7 +90,6 @@ func (c *kishCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 	var candidates []string
 
 	if isFirstWord {
-		// Complete commands
 		if strings.HasPrefix(kiPrefix, prefix) {
 			candidates = append(candidates, kiPrefix)
 		}
@@ -114,38 +109,31 @@ func (c *kishCompleter) Do(line []rune, pos int) (newLine [][]rune, length int) 
 			}
 		}
 	} else {
-		// Sub-completion from YAML specs
 		cmdWord := words[0]
 		if spec, ok := c.specs[cmdWord]; ok {
 			candidates = append(candidates, c.completeFromSpec(spec, words[1:], prefix)...)
 		}
 
-		// cd = only directories
 		if cmdWord == "cd" {
 			return c.buildResult(completeDirectories(prefix), prefix)
 		}
 
-		// Variable completion
 		if strings.HasPrefix(prefix, "$") {
 			candidates = append(candidates, completeVariables(prefix)...)
 		}
 
-		// Memory completion for erinnere/ki:search
 		if cmdWord == "erinnere" || cmdWord == "ki:search" {
 			candidates = append(candidates, completeMemory(prefix)...)
 		}
 	}
 
-	// File completion as fallback
 	fileCandidates := completeFiles(prefix)
 	candidates = append(candidates, fileCandidates...)
 
 	return c.buildResult(candidates, prefix)
 }
 
-// completeFromSpec generates completions from a YAML spec
 func (c *kishCompleter) completeFromSpec(spec *CompletionSpec, args []string, prefix string) []string {
-	// No args yet → complete subcommands
 	if len(args) == 0 {
 		var result []string
 		for _, sc := range spec.Subcommands {
@@ -156,15 +144,12 @@ func (c *kishCompleter) completeFromSpec(spec *CompletionSpec, args []string, pr
 		return result
 	}
 
-	// Has args → check if there's a spec for this subcommand
 	subCmd := args[0]
 	if argSpec, ok := spec.Args[subCmd]; ok {
 		switch val := argSpec.(type) {
 		case string:
-			// Shell command to execute for dynamic completions
 			return execCompletionCommand(val, prefix)
 		case map[string]interface{}:
-			// Nested spec (e.g. stash → {subcommands: [list, show, ...]})
 			if subs, ok := val["subcommands"].([]interface{}); ok {
 				var result []string
 				for _, sub := range subs {
@@ -178,7 +163,6 @@ func (c *kishCompleter) completeFromSpec(spec *CompletionSpec, args []string, pr
 		}
 	}
 
-	// Check _default
 	if defSpec, ok := spec.Args["_default"]; ok {
 		if cmd, ok := defSpec.(string); ok {
 			return execCompletionCommand(cmd, prefix)
@@ -188,7 +172,6 @@ func (c *kishCompleter) completeFromSpec(spec *CompletionSpec, args []string, pr
 	return nil
 }
 
-// execCompletionCommand runs a shell command and returns its output lines as completions
 func execCompletionCommand(shellCmd string, prefix string) []string {
 	out, err := exec.Command("sh", "-c", shellCmd).Output()
 	if err != nil {
@@ -243,8 +226,6 @@ func (c *kishCompleter) refreshPathCache() {
 		}
 	}
 }
-
-// ---------- Static Completions ----------
 
 func completeFiles(prefix string) []string {
 	dir := "."

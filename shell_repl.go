@@ -23,35 +23,29 @@ import (
 func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) error {
 	isInteractiveMode = true
 	defer func() { isInteractiveMode = false }()
-	// Setup signal handling — shared channel, context-aware
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTSTP)
-	var kiCancelFunc context.CancelFunc // set during KI operations
+	var kiCancelFunc context.CancelFunc
 	go func() {
 		for sig := range sigChan {
-			// If KI operation is running, cancel it
 			if kiCancelFunc != nil {
 				kiCancelFunc()
 				kiCancelFunc = nil
 				continue
 			}
-			// Otherwise forward to foreground process
-			pid := foregroundPID.Load()
-			if pid > 0 {
+			if pid := foregroundPID.Load(); pid > 0 {
 				syscall.Kill(-int(pid), sig.(syscall.Signal))
 			}
 		}
 	}()
 	defer signal.Stop(sigChan)
 
-	historyFile := filepath.Join(kishDir(), "history")
-	completer := newCompleter()
-
 	rl, err := readline.NewFromConfig(&readline.Config{
 		Prompt:          buildPrompt(),
-		HistoryFile:     historyFile,
+		HistoryFile:     filepath.Join(kishDir(), "history"),
 		HistoryLimit:    10000,
-		AutoComplete:    completer,
+		AutoComplete:    newCompleter(),
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
 	})
@@ -64,7 +58,6 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 	var multiLine strings.Builder
 
 	for {
-		// Check for finished background jobs
 		jobTable.UpdateStatus()
 		jobTable.CleanDone()
 
@@ -76,7 +69,6 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 				continue
 			}
 			if err == io.EOF {
-				fmt.Fprintln(os.Stdout, "exit")
 				saveSessionOnExit()
 				return nil
 			}
@@ -88,75 +80,63 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			continue
 		}
 
-		// Check: is this a KI request? (@ki/ki prefix or ? shortcut)
+		// KI request (@ki, ki, ?)
 		if isKIRequest(line) {
 			query := stripKIPrefix(line)
-
-			// Continuous mode
 			if query == "start" || query == "continuous" || query == "chat" {
 				kiCtx, kiCancel := context.WithCancel(context.Background())
 				kiCancelFunc = kiCancel
 				ContinuousMode(kiCtx, runner, stdoutTee, stderrTee)
 				kiCancelFunc = nil
 				kiCancel()
-				rl.SetPrompt(buildPrompt())
-				continue
+			} else {
+				kiCtx, kiCancel := context.WithCancel(context.Background())
+				kiCancelFunc = kiCancel
+				handleKI(kiCtx, query)
+				kiCancelFunc = nil
+				kiCancel()
 			}
-
-			kiCtx, kiCancel := context.WithCancel(context.Background())
-			kiCancelFunc = kiCancel
-			handleKI(kiCtx, query)
-			kiCancelFunc = nil
-			kiCancel()
 			rl.SetPrompt(buildPrompt())
 			continue
 		}
 
-		// Bang expansion: !!, !n, !string
+		// Bang expansion
 		if strings.HasPrefix(line, "!") && line != "!" {
-			expanded := expandBang(line, rl)
-			if expanded != "" {
+			if expanded := expandBang(line); expanded != "" {
 				fmt.Fprintf(os.Stderr, "\033[2m%s\033[0m\n", expanded)
 				line = expanded
 			}
 		}
 
-		// Handle exit/quit directly
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "exit" || trimmed == "quit" || trimmed == "logout" {
+		// Exit
+		if line == "exit" || line == "quit" || line == "logout" {
 			saveSessionOnExit()
-			fmt.Fprintln(os.Stdout, "exit")
 			return nil
 		}
-		// Handle exit with code: "exit 1"
-		if strings.HasPrefix(trimmed, "exit ") {
+		if strings.HasPrefix(line, "exit ") {
 			saveSessionOnExit()
 			var code int
-			fmt.Sscanf(trimmed[5:], "%d", &code)
+			fmt.Sscanf(line[5:], "%d", &code)
 			return interp.ExitStatus(code)
 		}
 
-		// Handle kish builtins that bypass the parser
-		if handled := handleBuiltin(line); handled {
+		// Builtins
+		if handleBuiltin(line) {
 			rl.SetPrompt(buildPrompt())
 			continue
 		}
 
-		// Multi-line support: accumulate if incomplete
+		// Multi-line accumulation
 		if multiLine.Len() > 0 {
 			multiLine.WriteString("\n")
 		}
 		multiLine.WriteString(line)
-		fullInput := multiLine.String()
 
-		// Try to parse — if incomplete, continue reading
-		prog, parseErr := parser.Parse(strings.NewReader(fullInput), "")
+		prog, parseErr := parser.Parse(strings.NewReader(multiLine.String()), "")
 		if parseErr != nil && isIncomplete(parseErr) {
 			rl.SetPrompt(buildPS2())
 			continue
 		}
-
-		// Reset multi-line state
 		multiLine.Reset()
 
 		if parseErr != nil {
@@ -165,12 +145,10 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			continue
 		}
 
-		// Execute shell statements
+		// Execute
 		ctx := context.Background()
 		for _, stmt := range prog.Stmts {
 			input := nodeToString(stmt)
-
-			// Reset capture buffers before each command
 			stdoutTee.Reset()
 			stderrTee.Reset()
 
@@ -187,22 +165,18 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 				}
 			}
 
-			// Capture output for context and logging
-			capturedOut := stdoutTee.String()
-			capturedErr := stderrTee.String()
-			shellContext.Record(input, lastExitCode, capturedOut, capturedErr)
+			out, serr := stdoutTee.String(), stderrTee.String()
+			shellContext.Record(input, lastExitCode, out, serr)
 			if shellLog != nil {
-				shellLog.Record(input, lastExitCode, capturedOut, capturedErr)
+				shellLog.Record(input, lastExitCode, out, serr)
 			}
 			if kishHistory != nil {
 				kishHistory.Add(input)
 			}
 		}
 
-		// PROMPT_COMMAND equivalent
 		if promptCmd := os.Getenv("PROMPT_COMMAND"); promptCmd != "" {
-			prog, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(strings.NewReader(promptCmd), "")
-			if err == nil {
+			if prog, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(strings.NewReader(promptCmd), ""); err == nil {
 				runner.Run(context.Background(), prog)
 			}
 		}
@@ -210,110 +184,66 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 	}
 }
 
-// handleBuiltin handles kish-specific builtins that need to bypass the shell parser.
-// Returns true if the input was handled.
 func handleBuiltin(line string) bool {
 	fields := strings.Fields(line)
 	if len(fields) == 0 {
 		return false
 	}
-
 	switch fields[0] {
 	case "history":
 		printHistory(fields)
-		return true
 	case "ki:clear":
 		kiConversation.Clear()
 		fmt.Fprintln(os.Stderr, "Konversation zurückgesetzt.")
-		return true
 	case "jobs":
 		jobTable.PrintJobs()
-		return true
 	case "fg":
-		jobID := 0
-		if len(fields) > 1 {
-			fmt.Sscanf(strings.TrimPrefix(fields[1], "%"), "%d", &jobID)
-		}
-		if jobID == 0 {
-			if job := jobTable.Last(); job != nil {
-				jobID = job.ID
-			}
-		}
-		if jobID > 0 {
-			if err := jobTable.ContinueFg(jobID); err != nil {
-				fmt.Fprintln(os.Stderr, "kish:", err)
-			}
-		} else {
-			fmt.Fprintln(os.Stderr, "kish: fg: no current job")
-		}
-		return true
-	case "disown":
-		jobID := 0
-		if len(fields) > 1 {
-			fmt.Sscanf(strings.TrimPrefix(fields[1], "%"), "%d", &jobID)
-		}
-		if jobID == 0 {
-			if job := jobTable.Last(); job != nil {
-				jobID = job.ID
-			}
-		}
-		if jobID > 0 {
-			jobTable.Remove(jobID)
-			fmt.Fprintf(os.Stderr, "Job %%%d disowned\n", jobID)
-		} else {
-			fmt.Fprintln(os.Stderr, "kish: disown: no current job")
-		}
-		return true
+		resolveJobCmd(fields, jobTable.ContinueFg)
 	case "bg":
-		jobID := 0
-		if len(fields) > 1 {
-			fmt.Sscanf(strings.TrimPrefix(fields[1], "%"), "%d", &jobID)
+		resolveJobCmd(fields, jobTable.ContinueBg)
+	case "disown":
+		if id := resolveJobID(fields); id > 0 {
+			jobTable.Remove(id)
+			fmt.Fprintf(os.Stderr, "Job %%%d disowned\n", id)
 		}
-		if jobID == 0 {
-			if job := jobTable.Last(); job != nil {
-				jobID = job.ID
-			}
-		}
-		if jobID > 0 {
-			if err := jobTable.ContinueBg(jobID); err != nil {
-				fmt.Fprintln(os.Stderr, "kish:", err)
-			}
-		} else {
-			fmt.Fprintln(os.Stderr, "kish: bg: no current job")
-		}
-		return true
+	default:
+		return false
 	}
-	return false
+	return true
 }
 
-// ---------- Session ----------
-
-// saveSessionOnExit stores a session summary in memory
-func saveSessionOnExit() {
-	if len(shellContext.history) == 0 {
-		return
+// resolveJobID extracts a job ID from "fg %2" or uses the last job.
+func resolveJobID(fields []string) int {
+	id := 0
+	if len(fields) > 1 {
+		fmt.Sscanf(strings.TrimPrefix(fields[1], "%"), "%d", &id)
 	}
-	cwd, _ := os.Getwd()
-	summary := fmt.Sprintf("%d Befehle ausgeführt", len(shellContext.history))
-	if len(shellContext.history) > 0 {
-		last := shellContext.history[0]
-		summary += fmt.Sprintf(", letzter: %s", last.Input)
+	if id == 0 {
+		if job := jobTable.Last(); job != nil {
+			id = job.ID
+		}
 	}
-	kiMemory.SaveSessionSummary(summary, cwd, len(shellContext.history))
+	return id
 }
 
-// REMOVED: everything below was moved to app.go
-// runSubshell, kishSubshellHandler, execEnv, kishDir, expandHome, etc.
-var _ = "" // end of file marker
+func resolveJobCmd(fields []string, fn func(int) error) {
+	id := resolveJobID(fields)
+	if id > 0 {
+		if err := fn(id); err != nil {
+			fmt.Fprintln(os.Stderr, "kish:", err)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "kish: %s: no current job\n", fields[0])
+	}
+}
+
 func handleKI(ctx context.Context, input string) {
 	ensureKIEngine()
 
-	// Strip prefix
 	input = strings.TrimPrefix(input, "? ")
 	input = strings.TrimPrefix(input, "?")
 	input = strings.TrimSpace(input)
 
-	// "?" alone = analyze last command
 	if input == "" && len(shellContext.history) > 0 {
 		last := shellContext.history[0]
 		input = fmt.Sprintf("Erkläre was passiert ist: Befehl '%s' mit Exit-Code %d", last.Input, last.ExitCode)
@@ -321,68 +251,51 @@ func handleKI(ctx context.Context, input string) {
 			input += "\nStderr: " + last.Stderr
 		}
 	}
-
 	if input == "" {
 		fmt.Fprintln(os.Stderr, "kish: nothing to ask")
 		return
 	}
 
-	// Collect and FILTER context through permissions
-	rawCtx := shellContext.Collect()
-	filteredCtx := kiPermissions.FilterContext(rawCtx)
+	filteredCtx := kiPermissions.FilterContext(shellContext.Collect())
 
-	// If RequireConfirmation: show what would be sent
 	if kiPermissions.RequireConfirmation {
 		msg := fmt.Sprintf("KI-Query senden? (cwd=%s, %d cmds, %d env vars)",
 			filteredCtx.Cwd, len(filteredCtx.LastCommands), len(filteredCtx.EnvVars))
 		if !ConfirmSimple(msg) {
-			fmt.Fprintln(os.Stderr, "Abgebrochen.")
 			return
 		}
 	}
 
-	// Rate limiting
-	allowed, warning := rateLimiter.Allow()
-	if warning != "" {
-		fmt.Fprintf(os.Stderr, "\033[1;33m%s\033[0m\n", warning)
-	}
-	if !allowed {
+	if allowed, warning := rateLimiter.Allow(); !allowed {
 		fmt.Fprintf(os.Stderr, "\033[1;31m%s\033[0m\n", warning)
 		return
+	} else if warning != "" {
+		fmt.Fprintf(os.Stderr, "\033[1;33m%s\033[0m\n", warning)
 	}
 
-	// Audit: log what we're sending
 	if audit != nil {
 		audit.LogQuery(input, kiEngine.Name())
 	}
 
-	// Agent mode: KI can execute actions to gather info
 	if kiPermissions.AgentMode {
-		_, err := RunAgentLoop(ctx, kiEngine, input, filteredCtx, kiMemory, rateLimiter.MaxAgentSteps())
-		if err != nil {
+		if _, err := RunAgentLoop(ctx, kiEngine, input, filteredCtx, kiMemory, rateLimiter.MaxAgentSteps()); err != nil {
 			fmt.Fprintf(os.Stderr, "kish: ki error: %s\n", err)
 		}
 		return
 	}
 
-	// Simple mode: one query, one answer
 	resp, err := kiEngine.Query(ctx, input, filteredCtx, os.Stdout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "kish: ki error: %s\n", err)
 		return
 	}
-
-	// If the KI suggests a command, check permissions and ask for confirmation
 	if resp != nil && resp.SuggestedCommand != "" {
 		executeWithPermissions(resp.SuggestedCommand)
 	}
 }
 
-// executeWithPermissions checks a KI-suggested command against the permission system
-// and handles confirmation before execution.
 func executeWithPermissions(command string) {
 	allowed, needsConfirm, reason := kiPermissions.CheckCommand(command)
-
 	if !allowed {
 		fmt.Fprintf(os.Stderr, "\033[1;31m[BLOCKIERT]\033[0m %s\n", reason)
 		if audit != nil {
@@ -393,29 +306,21 @@ func executeWithPermissions(command string) {
 
 	if needsConfirm {
 		level := ConfirmNormal
-		if reason != "" && (strings.Contains(reason, "Destruktiv") || strings.Contains(reason, "destruktiv")) {
+		if strings.Contains(strings.ToLower(reason), "destruktiv") {
 			level = ConfirmDestructive
 		}
-
-		result := Confirm(command, reason, level)
-		switch result {
+		switch Confirm(command, reason, level) {
 		case ConfirmNo:
-			fmt.Fprintln(os.Stderr, "Nicht ausgeführt.")
 			if audit != nil {
 				audit.Log("CONFIRM", command, "denied", reason)
 			}
 			return
 		case ConfirmEdit:
 			fmt.Fprintf(os.Stderr, "Befehl editieren: ")
-			reader := bufio.NewReader(os.Stdin)
-			edited, _ := reader.ReadString('\n')
-			command = strings.TrimSpace(edited)
-			if command == "" {
-				fmt.Fprintln(os.Stderr, "Abgebrochen.")
-				return
+			edited, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+			if cmd := strings.TrimSpace(edited); cmd != "" {
+				executeWithPermissions(cmd)
 			}
-			// Re-check the edited command
-			executeWithPermissions(command)
 			return
 		case ConfirmYes:
 			if audit != nil {
@@ -424,28 +329,19 @@ func executeWithPermissions(command string) {
 		}
 	}
 
-	// Execute the command
 	fmt.Fprintf(os.Stderr, "\033[2m→ %s\033[0m\n", command)
-	runner, err := interp.New(
-		interp.StdIO(os.Stdin, os.Stdout, os.Stderr),
-	)
+	runner, err := interp.New(interp.StdIO(os.Stdin, os.Stdout, os.Stderr))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: %s\n", err)
 		return
 	}
-	prog, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(strings.NewReader(command), "")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: %s\n", err)
-		return
+	if prog, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(strings.NewReader(command), ""); err == nil {
+		runner.Reset()
+		runner.Run(context.Background(), prog)
 	}
-	runner.Reset()
-	runner.Run(context.Background(), prog)
 }
 
-// expandBang handles bash-style bang expansion: !!, !n, !string
-func expandBang(line string, rl *readline.Instance) string {
-	histFile := filepath.Join(kishDir(), "history")
-	data, err := os.ReadFile(histFile)
+func expandBang(line string) string {
+	data, err := os.ReadFile(filepath.Join(kishDir(), "history"))
 	if err != nil {
 		return ""
 	}
@@ -454,35 +350,37 @@ func expandBang(line string, rl *readline.Instance) string {
 		return ""
 	}
 
-	bang := line[1:] // strip leading !
+	bang := line[1:]
 
-	// !! = last command
 	if bang == "!" {
 		return lines[len(lines)-1]
 	}
-
-	// !n = command number n
 	var n int
 	if cnt, _ := fmt.Sscanf(bang, "%d", &n); cnt == 1 && n > 0 && n <= len(lines) {
 		return lines[n-1]
 	}
-
-	// !-n = n-th last command
 	if strings.HasPrefix(bang, "-") {
 		var neg int
 		if cnt, _ := fmt.Sscanf(bang[1:], "%d", &neg); cnt == 1 && neg > 0 && neg <= len(lines) {
 			return lines[len(lines)-neg]
 		}
 	}
-
-	// !string = last command starting with string
 	for i := len(lines) - 1; i >= 0; i-- {
 		if strings.HasPrefix(lines[i], bang) {
 			return lines[i]
 		}
 	}
-
 	return ""
 }
 
-// saveSessionOnExit stores a session summary in memory
+func saveSessionOnExit() {
+	if len(shellContext.history) == 0 {
+		return
+	}
+	cwd, _ := os.Getwd()
+	summary := fmt.Sprintf("%d Befehle", len(shellContext.history))
+	if last := shellContext.history[0]; last.Input != "" {
+		summary += ", letzter: " + last.Input
+	}
+	kiMemory.SaveSessionSummary(summary, cwd, len(shellContext.history))
+}

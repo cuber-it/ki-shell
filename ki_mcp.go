@@ -1,8 +1,7 @@
 // Copyright 2026 cuber IT service. Assisted by Claude Code (Anthropic).
 // Licensed under Apache 2.0.
-// mcp.go — MCP (Model Context Protocol) client integration.
-// Allows the KI to use external tools (browser, database, web search, etc.)
-// via MCP servers configured in ~/.kish/config.yaml
+// MCP (Model Context Protocol) client integration.
+// Allows the KI to use external tools via MCP servers configured in ~/.kish/config.yaml
 package main
 
 import (
@@ -15,16 +14,14 @@ import (
 	"sync"
 )
 
-// MCPServer represents a configured MCP server
 type MCPServer struct {
 	Name      string   `yaml:"name"`
-	Command   string   `yaml:"command"`   // e.g. "npx @anthropic/mcp-server-fetch"
+	Command   string   `yaml:"command"`
 	Args      []string `yaml:"args,omitempty"`
 	Env       []string `yaml:"env,omitempty"`
-	AutoStart bool     `yaml:"auto_start"` // start on kish startup
+	AutoStart bool     `yaml:"auto_start"`
 }
 
-// MCPClient manages connections to MCP servers
 type MCPClient struct {
 	mu      sync.Mutex
 	servers map[string]*mcpConnection
@@ -52,7 +49,6 @@ func initMCP(servers []MCPServer) {
 	}
 }
 
-// Start launches an MCP server process
 func (mc *MCPClient) Start(name string) error {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
@@ -65,8 +61,7 @@ func (mc *MCPClient) Start(name string) error {
 		return nil
 	}
 
-	args := conn.config.Args
-	cmd := exec.Command(conn.config.Command, args...)
+	cmd := exec.Command(conn.config.Command, conn.config.Args...)
 	cmd.Env = append(os.Environ(), conn.config.Env...)
 
 	stdin, err := cmd.StdinPipe()
@@ -92,7 +87,6 @@ func (mc *MCPClient) Start(name string) error {
 	return nil
 }
 
-// Stop terminates an MCP server
 func (mc *MCPClient) Stop(name string) error {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
@@ -109,7 +103,6 @@ func (mc *MCPClient) Stop(name string) error {
 	return nil
 }
 
-// StopAll terminates all running MCP servers
 func (mc *MCPClient) StopAll() {
 	if mc == nil {
 		return
@@ -119,7 +112,6 @@ func (mc *MCPClient) StopAll() {
 	}
 }
 
-// Call sends a JSON-RPC request to an MCP server and returns the response
 func (mc *MCPClient) Call(serverName, method string, params interface{}) (json.RawMessage, error) {
 	mc.mu.Lock()
 	conn, ok := mc.servers[serverName]
@@ -134,7 +126,6 @@ func (mc *MCPClient) Call(serverName, method string, params interface{}) (json.R
 		}
 	}
 
-	// JSON-RPC 2.0 request
 	req := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      1,
@@ -146,7 +137,6 @@ func (mc *MCPClient) Call(serverName, method string, params interface{}) (json.R
 		return nil, err
 	}
 
-	// Send request
 	mc.mu.Lock()
 	_, err = conn.stdin.Write(append(reqBytes, '\n'))
 	mc.mu.Unlock()
@@ -154,7 +144,6 @@ func (mc *MCPClient) Call(serverName, method string, params interface{}) (json.R
 		return nil, fmt.Errorf("mcp: write to %s: %w", serverName, err)
 	}
 
-	// Read response (one line)
 	buf := make([]byte, 65536)
 	n, err := conn.stdout.Read(buf)
 	if err != nil {
@@ -178,7 +167,6 @@ func (mc *MCPClient) Call(serverName, method string, params interface{}) (json.R
 	return resp.Result, nil
 }
 
-// ListTools returns available tools from all running MCP servers
 func (mc *MCPClient) ListTools() []string {
 	if mc == nil {
 		return nil
@@ -194,7 +182,6 @@ func (mc *MCPClient) ListTools() []string {
 	return tools
 }
 
-// FormatForPrompt creates context about available MCP tools for the KI
 func (mc *MCPClient) FormatForPrompt() string {
 	if mc == nil {
 		return ""

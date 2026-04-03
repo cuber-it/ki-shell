@@ -1,8 +1,7 @@
 // Copyright 2026 cuber IT service. Assisted by Claude Code (Anthropic).
 // Licensed under Apache 2.0.
-// ki_provider.go — Adapter between kish's KIEngine interface and heinzel's Provider library.
+// Adapter between kish's KIEngine interface and heinzel's Provider library.
 // Uses github.com/cuber-it/heinzel-ai-core-go/provider for OpenAI, Anthropic, etc.
-// No custom HTTP code — that's all in heinzel.
 package main
 
 import (
@@ -17,7 +16,6 @@ import (
 	"github.com/cuber-it/heinzel-ai-core-go/provider"
 )
 
-// ProviderEngine wraps a heinzel Provider as a kish KIEngine.
 type ProviderEngine struct {
 	provider          provider.Provider
 	model             string
@@ -26,14 +24,12 @@ type ProviderEngine struct {
 	sysPromptOverride string
 }
 
-// NewProviderEngine creates a KIEngine from a heinzel Provider.
 func NewProviderEngine(p provider.Provider, cfg provider.ProviderConfig) *ProviderEngine {
 	model := cfg.DefaultModel
 	if model == "" {
 		model = p.DefaultModel()
 	}
 
-	// Cost tracking DB in ~/.kish/
 	dbPath := filepath.Join(kishDir(), "costs.db")
 	db, err := provider.NewDB("file:"+dbPath, p.Name())
 	if err != nil {
@@ -69,12 +65,10 @@ func (e *ProviderEngine) Close() {
 }
 
 func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx ShellContext, out io.Writer) (*KIResponse, error) {
-	customPrompt := e.sysPromptOverride
-	sysPrompt := buildSystemPrompt(shellCtx, kiMemory, customPrompt)
+	sysPrompt := buildSystemPrompt(shellCtx, kiMemory, e.sysPromptOverride)
 	vSystemPrompt(sysPrompt)
 	vKIRequest(input)
 
-	// Build messages from conversation history
 	var messages []provider.ChatMessage
 	messages = append(messages, provider.ChatMessage{Role: "system", Content: sysPrompt})
 	for _, turn := range kiConversation.Recent() {
@@ -89,7 +83,6 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 		Stream:   true,
 	}
 
-	// Stream response
 	start := time.Now()
 	var fullText strings.Builder
 	var usage provider.Usage
@@ -109,9 +102,8 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 	})
 
 	latency := time.Since(start)
-	fmt.Fprintln(out) // newline after streamed output
+	fmt.Fprintln(out)
 
-	// Log usage
 	if e.db != nil {
 		cost := e.config.CostForTokens(e.model, usage.InputTokens, usage.OutputTokens)
 		status := "ok"
@@ -134,17 +126,14 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 	kiConversation.Add(input, responseText)
 	vKIResponse(responseText)
 
-	suggestedCmd := extractCommand(responseText)
-
 	return &KIResponse{
 		Text:             responseText,
-		SuggestedCommand: suggestedCmd,
+		SuggestedCommand: extractCommand(responseText),
 		Confidence:       -1,
 		TokensUsed:       usage.InputTokens + usage.OutputTokens,
 	}, nil
 }
 
-// extractCommand finds a ```bash block in the response and returns the command
 func extractCommand(text string) string {
 	start := strings.Index(text, "```bash\n")
 	if start < 0 {
@@ -161,13 +150,13 @@ func extractCommand(text string) string {
 		return ""
 	}
 	cmd := strings.TrimSpace(text[start : start+end])
+	// Only single-line commands
 	if strings.Contains(cmd, "\n") {
 		return ""
 	}
 	return cmd
 }
 
-// CostStats returns cost tracking data for display
 func (e *ProviderEngine) TodayStats() *provider.UsageSummary {
 	if e.db == nil {
 		return nil

@@ -35,36 +35,31 @@ func vPrint(level int, format string, args ...interface{}) {
 	}
 }
 
-// vAction logs an action at the appropriate level
+// vAction logs an action at v1+ level (v0 output is handled inline by the caller)
 func vAction(action string, level ActionLevel, step int, maxSteps int) {
+	if verboseLevel < 1 {
+		return
+	}
 	levelName := ""
 	color := ""
 	switch level {
 	case ActionAutoRead:
-		color = "\033[2m"    // dim
+		color = "\033[2m"
 		levelName = "read"
 	case ActionAutoWrite:
-		color = "\033[33m"   // yellow
+		color = "\033[33m"
 		levelName = "write"
 	case ActionAutoExec:
-		color = "\033[35m"   // magenta
+		color = "\033[35m"
 		levelName = "exec"
 	case ActionConfirm:
-		color = "\033[1;33m" // bold yellow
+		color = "\033[1;33m"
 		levelName = "confirm"
 	case ActionBlocked:
-		color = "\033[1;31m" // bold red
+		color = "\033[1;31m"
 		levelName = "BLOCKED"
 	}
-
-	if verboseLevel >= 1 {
-		fmt.Fprintf(os.Stderr, "%s[step %d/%d] [%s] → %s\033[0m\n", color, step, maxSteps, levelName, action)
-	} else {
-		// v0: only show auto-read as dim arrow, confirm/blocked are always shown
-		if level == ActionAutoRead || level == ActionAutoWrite || level == ActionAutoExec {
-			fmt.Fprintf(os.Stderr, "\033[2m→ %s\033[0m\n", action)
-		}
-	}
+	fmt.Fprintf(os.Stderr, "%s[step %d/%d] [%s] → %s\033[0m\n", color, step, maxSteps, levelName, action)
 }
 
 // vSystemPrompt logs the system prompt at v2 level

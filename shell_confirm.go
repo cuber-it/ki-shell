@@ -16,7 +16,6 @@ type ConfirmLevel int
 const (
 	ConfirmNormal      ConfirmLevel = iota // yellow — standard confirmation
 	ConfirmDestructive                     // red — dangerous operation
-	ConfirmInfo                            // cyan — informational, low risk
 )
 
 // ConfirmResult is what the user chose
@@ -53,12 +52,9 @@ func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
 	case ConfirmDestructive:
 		color = "\033[1;31m" // bold red
 		label = "ACHTUNG"
-	case ConfirmNormal:
+	default: // ConfirmNormal
 		color = "\033[1;33m" // bold yellow
 		label = "Vorschlag"
-	case ConfirmInfo:
-		color = "\033[1;36m" // bold cyan
-		label = "Aktion"
 	}
 
 	fmt.Fprintf(os.Stderr, "%s[%s]\033[0m %s\n", color, label, command)
@@ -92,11 +88,4 @@ func ConfirmSimple(message string) bool {
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
 	return input == "j" || input == "y" || input == "ja" || input == "yes"
-}
-
-// ResetConfirmCache clears the session-confirmed commands
-func ResetConfirmCache() {
-	confirmedMu.Lock()
-	confirmedCommands = make(map[string]bool)
-	confirmedMu.Unlock()
 }

@@ -9,12 +9,11 @@ import (
 )
 
 // buildSystemPrompt creates the full system prompt for the KI engine.
-// This is what makes kish intelligent — it tells the KI who it is,
+// This is what makes kish intelligent -- it tells the KI who it is,
 // what it can do, and what it knows about the current context.
 func buildSystemPrompt(shellCtx ShellContext, mem *Memory, customPrompt string) string {
 	var parts []string
 
-	// Identity
 	parts = append(parts, `Du bist kish — eine intelligente Shell. Der User arbeitet in dir.
 
 Rede wie ein kompetenter Kollege. Nicht wie ein Chatbot, nicht wie ein Handbuch.
@@ -41,20 +40,16 @@ Regeln:
 - Deine Completions: ~/.kish/completions/*.yaml
 - Dein Startup: ~/.kish/kishrc`)
 
-	// Custom system prompt (from config or continuous mode)
 	if customPrompt != "" {
 		parts = append(parts, "\nZusätzliche Anweisungen:\n"+customPrompt)
 	}
 
-	// Active prompt variant (A/B testing)
 	if variant := ActivePromptVariant(); variant != "" {
 		parts = append(parts, "\nStil-Anweisung:\n"+variant)
 	}
 
-	// Shell context
 	parts = append(parts, buildContextBlock(shellCtx))
 
-	// Memory (only if permissions allow)
 	if mem != nil && kiPermissions.SendContext.SendMemory {
 		memBlock := mem.FormatForPrompt()
 		if memBlock != "" {
@@ -62,7 +57,6 @@ Regeln:
 		}
 	}
 
-	// Project info (README/CLAUDE.md)
 	if kiPermissions.SendContext.SendProjectType {
 		projectInfo := detectProjectInfo()
 		if projectInfo != "" {
@@ -70,7 +64,6 @@ Regeln:
 		}
 	}
 
-	// MCP tools
 	if mcpClient != nil {
 		mcpInfo := mcpClient.FormatForPrompt()
 		if mcpInfo != "" {
@@ -78,7 +71,6 @@ Regeln:
 		}
 	}
 
-	// Shell log (recent activity with output)
 	if shellLog != nil && kiPermissions.SendContext.SendCommandHistory {
 		logBlock := shellLog.FormatForKI(5)
 		if logBlock != "" {
@@ -101,7 +93,6 @@ func buildContextBlock(shellCtx ShellContext) string {
 		lines = append(lines, fmt.Sprintf("  projekt: %s", shellCtx.ProjectType))
 	}
 
-	// Environment highlights
 	for key, val := range shellCtx.EnvVars {
 		switch key {
 		case "VIRTUAL_ENV", "CONDA_DEFAULT_ENV", "NODE_ENV":
@@ -109,7 +100,6 @@ func buildContextBlock(shellCtx ShellContext) string {
 		}
 	}
 
-	// Last commands with output
 	if len(shellCtx.LastCommands) > 0 {
 		lines = append(lines, "\nLetzte Befehle:")
 		for i, cmd := range shellCtx.LastCommands {
@@ -122,7 +112,6 @@ func buildContextBlock(shellCtx ShellContext) string {
 			}
 			lines = append(lines, fmt.Sprintf("  $ %s  [%s]", cmd.Input, status))
 			if cmd.Stderr != "" {
-				// Indent stderr
 				for _, line := range strings.Split(strings.TrimSpace(cmd.Stderr), "\n") {
 					lines = append(lines, fmt.Sprintf("    stderr: %s", line))
 				}
@@ -141,16 +130,12 @@ func buildContextBlock(shellCtx ShellContext) string {
 	return strings.Join(lines, "\n")
 }
 
-// buildConversationMessages is no longer needed — the ProviderEngine builds
-// messages directly from kiConversation. Kept as a no-op for compatibility.
-
-// ConversationTurn represents one Q&A pair in the conversation
 type ConversationTurn struct {
 	UserInput string
 	Response  string
 }
 
-// ConversationHistory tracks recent KI interactions for multi-turn context
+// ConversationHistory tracks recent KI interactions for multi-turn context.
 type ConversationHistory struct {
 	turns    []ConversationTurn
 	maxTurns int

@@ -11,7 +11,7 @@ import (
 )
 
 // collectEnvVars returns a filtered set of environment variables relevant for KI context.
-// We don't send everything — only what helps the KI understand the environment.
+// We don't send everything -- only what helps the KI understand the environment.
 func collectEnvVars() map[string]string {
 	relevant := []string{
 		"HOME", "USER", "SHELL", "LANG",
@@ -31,7 +31,6 @@ func collectEnvVars() map[string]string {
 	return result
 }
 
-// detectGitBranch returns the current git branch or empty string
 func detectGitBranch() string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Stderr = nil
@@ -42,7 +41,6 @@ func detectGitBranch() string {
 	return strings.TrimSpace(string(out))
 }
 
-// detectProjectType identifies the project type from marker files
 func detectProjectType() string {
 	cwd, _ := os.Getwd()
 
@@ -94,7 +92,6 @@ func detectProjectInfo() string {
 	return ""
 }
 
-// truncateLines keeps only the last N lines of a string
 func truncateLines(text string, maxLines int) string {
 	if text == "" {
 		return ""

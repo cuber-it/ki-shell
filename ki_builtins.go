@@ -13,7 +13,7 @@ import (
 )
 
 // kishBuiltinsMiddleware intercepts kish-specific commands (ki, merke, erinnere, etc.)
-// before they reach the default exec handler. Works in all modes (interactive, -c, pipe).
+// before they reach the default exec handler.
 func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 	return func(ctx context.Context, args []string) error {
 		hc := interp.HandlerCtx(ctx)
@@ -116,7 +116,6 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				fmt.Fprintf(hc.Stdout, "  Tokens:    %d in / %d out\n", tokIn, tokOut)
 				fmt.Fprintf(hc.Stdout, "  Kosten:    $%.4f\n", totalCost)
 
-				// Last 5 requests
 				recent := pe.RecentRequests(5)
 				if len(recent) > 0 {
 					fmt.Fprintf(hc.Stdout, "\nLetzte Requests:\n")
@@ -134,7 +133,6 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 
 		case "ki:variant":
 			if len(args) < 2 {
-				// List variants
 				fmt.Fprintln(hc.Stdout, ListVariants())
 				return nil
 			}

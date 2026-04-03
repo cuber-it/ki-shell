@@ -122,9 +122,9 @@ func loadStartupFiles(runner *interp.Runner, stderrFilter *FilterWriter, interac
 	if login && !*flagNoProfile {
 		sourceIfExists(runner, "/etc/profile")
 		if fileExists(expandHome("~/.bash_profile")) {
-			sourceQuietly(runner, expandHome("~/.bash_profile"))
+			sourceIfExists(runner, expandHome("~/.bash_profile"))
 		} else if fileExists(expandHome("~/.bash_login")) {
-			sourceQuietly(runner, expandHome("~/.bash_login"))
+			sourceIfExists(runner, expandHome("~/.bash_login"))
 		} else {
 			sourceIfExists(runner, expandHome("~/.profile"))
 		}
@@ -136,12 +136,12 @@ func loadStartupFiles(runner *interp.Runner, stderrFilter *FilterWriter, interac
 
 		sourceIfExists(runner, "/etc/kish.kishrc")
 		if !fileExists("/etc/kish.kishrc") {
-			sourceQuietly(runner, "/etc/bash.bashrc")
+			sourceIfExists(runner, "/etc/bash.bashrc")
 		}
 		if fileExists(expandHome("~/.kishrc")) {
 			sourceIfExists(runner, expandHome("~/.kishrc"))
 		} else {
-			sourceQuietly(runner, expandHome("~/.bashrc"))
+			sourceIfExists(runner, expandHome("~/.bashrc"))
 		}
 		cwd, _ := os.Getwd()
 		localRC := filepath.Join(cwd, ".kishrc")
@@ -268,25 +268,6 @@ func isIncomplete(err error) bool {
 		strings.Contains(msg, "must end with") ||
 		strings.Contains(msg, "expected") ||
 		strings.Contains(msg, "not terminated")
-}
-
-func sourceQuietly(runner *interp.Runner, path string) {
-	if !fileExists(path) {
-		return
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	prog, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(file, path)
-	if err != nil {
-		return
-	}
-	func() {
-		defer func() { recover() }()
-		runner.Run(context.Background(), prog)
-	}()
 }
 
 func sourceIfExists(runner *interp.Runner, path string) {

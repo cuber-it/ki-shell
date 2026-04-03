@@ -7,12 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
-// PromptVariant is a named system prompt variant for A/B testing
 type PromptVariant struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
@@ -20,20 +18,10 @@ type PromptVariant struct {
 	Active      bool   `yaml:"active"`
 }
 
-// PromptABConfig holds all prompt variants
 type PromptABConfig struct {
 	Variants []PromptVariant `yaml:"variants"`
 }
 
-// PromptABLog records which variant was used and user feedback
-type PromptABEntry struct {
-	Timestamp time.Time `yaml:"timestamp"`
-	Variant   string    `yaml:"variant"`
-	Query     string    `yaml:"query"`
-	Rating    int       `yaml:"rating"` // 1-5, 0=unrated
-}
-
-// LoadPromptVariants reads prompt variants from ~/.kish/prompts.yaml
 func LoadPromptVariants() []PromptVariant {
 	path := filepath.Join(kishDir(), "prompts.yaml")
 	data, err := os.ReadFile(path)
@@ -47,7 +35,6 @@ func LoadPromptVariants() []PromptVariant {
 	return cfg.Variants
 }
 
-// ActivePromptVariant returns the currently active variant's prompt text, or empty
 func ActivePromptVariant() string {
 	variants := LoadPromptVariants()
 	for _, v := range variants {
@@ -58,7 +45,6 @@ func ActivePromptVariant() string {
 	return ""
 }
 
-// WriteDefaultPromptVariants creates a starter prompts.yaml if none exists
 func WriteDefaultPromptVariants() {
 	path := filepath.Join(kishDir(), "prompts.yaml")
 	if fileExists(path) {
@@ -94,7 +80,6 @@ variants:
 	os.WriteFile(path, []byte(content), 0644)
 }
 
-// SwitchVariant activates a named variant and deactivates all others
 func SwitchVariant(name string) error {
 	path := filepath.Join(kishDir(), "prompts.yaml")
 	data, err := os.ReadFile(path)
@@ -124,7 +109,6 @@ func SwitchVariant(name string) error {
 	return os.WriteFile(path, out, 0644)
 }
 
-// ListVariants returns a formatted list of all variants
 func ListVariants() string {
 	variants := LoadPromptVariants()
 	if len(variants) == 0 {

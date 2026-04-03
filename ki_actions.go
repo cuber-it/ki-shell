@@ -24,40 +24,29 @@ const (
 	ActionAutoExec                     // execute silently, anything goes (sudo, rm — god mode)
 )
 
-// ReadOnlyCommands are commands the KI may execute without asking.
-// They cannot modify system state. Configurable via permissions.yaml.
+// Configurable via permissions.yaml.
 var DefaultReadOnlyCommands = []string{
-	// Filesystem (read)
 	"ls", "cat", "head", "tail", "wc", "file", "stat", "find", "locate",
 	"du", "df", "tree", "less", "more", "realpath", "basename", "dirname",
-	// Text processing
 	"grep", "awk", "sed", "sort", "uniq", "cut", "tr", "diff", "comm",
-	// System info
 	"uname", "hostname", "whoami", "id", "date", "uptime", "free",
 	"lsb_release", "arch", "nproc", "lscpu", "lsblk",
-	// Process info
 	"ps", "top", "htop", "pgrep",
-	// Network info (read-only)
 	"ping", "host", "dig", "nslookup", "curl", "wget",
 	"ip", "ifconfig", "ss", "netstat",
-	// Git (read)
 	"git status", "git log", "git diff", "git branch", "git remote",
 	"git show", "git blame", "git tag", "git stash list",
-	// Docker (read)
 	"docker ps", "docker images", "docker logs", "docker inspect",
 	"docker stats", "docker top", "docker port", "docker network ls",
 	"docker volume ls", "docker compose ps", "docker compose logs",
 	// SSH is handled separately in ClassifyAction (recursive check)
-	// Package info
 	"dpkg -l", "apt list", "rpm -qa", "pip list", "npm list", "go list",
-	// Kubernetes (read)
 	"kubectl get", "kubectl describe", "kubectl logs", "kubectl top",
 }
 
 // ClassifyAction determines the action level for a command.
-// Chain: Blocked → AutoExec → AutoWrite → AutoRead → Confirm
+// Chain: Blocked -> AutoExec -> AutoWrite -> AutoRead -> Confirm
 func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
-	// Step 1: Hardcoded blocks — ALWAYS checked, even in god mode the config blocks apply
 	allowed, _, reason := perms.CheckCommand(command)
 	if !allowed {
 		return ActionBlocked, reason
@@ -65,9 +54,7 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 
 	cmdLower := strings.ToLower(strings.TrimSpace(command))
 
-	// Step 2: God mode / AutoExecute — if enabled, everything that's not blocked runs
 	if perms.AutoExecute {
-		// Even with AutoExecute, destructive commands need confirmation unless overridden
 		if perms.ConfirmDestructive {
 			for _, pattern := range perms.DestructivePatterns {
 				if strings.Contains(cmdLower, strings.ToLower(pattern)) {
@@ -78,7 +65,6 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 		return ActionAutoExec, ""
 	}
 
-	// Step 3: Read-only whitelist — auto-execute without asking
 	readOnlyList := DefaultReadOnlyCommands
 	if len(perms.AllowedCommands) > 0 {
 		readOnlyList = append(readOnlyList, perms.AllowedCommands...)
@@ -86,7 +72,6 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 	for _, pattern := range readOnlyList {
 		patLower := strings.ToLower(pattern)
 		if strings.HasPrefix(cmdLower, patLower) {
-			// Ensure word boundary: pattern must be followed by space, EOF, or nothing
 			rest := cmdLower[len(patLower):]
 			if rest == "" || rest[0] == ' ' {
 				return ActionAutoRead, ""
@@ -94,7 +79,7 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 		}
 	}
 
-	// Step 4: SSH — check the remote command recursively
+	// SSH: check the remote command recursively
 	if strings.HasPrefix(cmdLower, "ssh ") {
 		remoteCmd := extractSSHCommand(command)
 		if remoteCmd != "" {
@@ -109,16 +94,13 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 		return ActionConfirm, "SSH-Verbindung braucht Bestätigung"
 	}
 
-	// Step 5: Everything else → Confirm
 	return ActionConfirm, ""
 }
 
-// extractSSHCommand extracts the remote command from an ssh command.
-// Handles: ssh user@host cmd, ssh -p 22 host cmd, ssh -J jump host cmd
-// e.g. "ssh user@host docker ps" → "docker ps"
+// extractSSHCommand extracts the remote command from an ssh invocation.
+// e.g. "ssh user@host docker ps" -> "docker ps"
 func extractSSHCommand(command string) string {
 	parts := strings.Fields(command)
-	// Flags that take an argument
 	flagsWithArg := map[string]bool{
 		"-p": true, "-i": true, "-l": true, "-o": true,
 		"-F": true, "-J": true, "-W": true, "-w": true,
@@ -137,16 +119,13 @@ func extractSSHCommand(command string) string {
 		}
 		if !hostSeen {
 			hostSeen = true
-			continue // this is the host
+			continue
 		}
-		// Everything after host is the remote command
 		return strings.Join(parts[i:], " ")
 	}
 	return ""
 }
 
-// ExecuteAction runs a command and captures its output.
-// Used by the KI agent loop to gather information.
 func ExecuteAction(ctx context.Context, command string, timeout time.Duration) (string, string, int) {
 	if timeout == 0 {
 		timeout = 30 * time.Second
@@ -170,23 +149,15 @@ func ExecuteAction(ctx context.Context, command string, timeout time.Duration) (
 		}
 	}
 
-	// Truncate output to prevent token explosion
 	stdoutStr := truncateLines(stdout.String(), 500)
 	stderrStr := truncateLines(stderr.String(), 100)
 	return stdoutStr, stderrStr, exitCode
 }
 
 // RunAgentLoop executes a multi-step KI interaction.
-// The KI can request actions (commands to run), kish executes them
+// The KI requests actions (commands to run), kish executes them
 // according to permissions, feeds results back, and the KI continues
-// until it has a final answer.
-//
-// Protocol: KI outputs ```action blocks:
-//   ```action
-//   docker ps
-//   ```
-// kish executes, feeds output back, KI continues.
-// Max iterations to prevent infinite loops.
+// until it has a final answer. Max iterations to prevent infinite loops.
 func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx ShellContext, mem *Memory, maxSteps int) (string, error) {
 	if maxSteps == 0 {
 		maxSteps = 5
@@ -195,14 +166,12 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 	conversation := make([]ConversationTurn, 0)
 	currentInput := input
 
-	// Temporarily switch to agent system prompt
 	if pe, ok := engine.(*ProviderEngine); ok {
 		pe.SetSystemPromptOverride(buildAgentSystemPrompt(shellCtx, mem))
 		defer pe.SetSystemPromptOverride("")
 	}
 
 	for step := 0; step < maxSteps; step++ {
-		// Check for cancellation (Ctrl+C)
 		select {
 		case <-ctx.Done():
 			fmt.Fprintln(os.Stderr, "\n[kish/ki] Abgebrochen.")
@@ -225,10 +194,8 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 		responseText := output.String()
 		vKIResponse(responseText)
 
-		// Check for action blocks
 		actions := extractActions(responseText)
 		if len(actions) == 0 {
-			// No actions requested — final answer
 			vPrint(1, "--- Final answer (no more actions) ---")
 			fmt.Fprint(os.Stdout, responseText)
 			fmt.Fprintln(os.Stdout)
@@ -236,27 +203,23 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 		}
 
 		// Deduplicate
-		{
-			seen := make(map[string]bool)
-			var unique []string
-			for _, a := range actions {
-				if !seen[a] {
-					seen[a] = true
-					unique = append(unique, a)
-				}
+		seen := make(map[string]bool)
+		var unique []string
+		for _, a := range actions {
+			if !seen[a] {
+				seen[a] = true
+				unique = append(unique, a)
 			}
-			actions = unique
 		}
+		actions = unique
 
 		vPrint(1, "KI requested %d action(s)", len(actions))
 
-		// Execute actions
 		var actionResults strings.Builder
 		for i, action := range actions {
 			level, reason := ClassifyAction(action, &kiPermissions)
 			vAction(action, level, i+1, len(actions))
 
-			// Audit every action
 			if audit != nil {
 				audit.LogAction(action, level, levelDecision(level), reason)
 			}
@@ -305,13 +268,11 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 			}
 		}
 
-		// Print the text part (before/between actions)
 		textPart := stripActions(responseText)
 		if strings.TrimSpace(textPart) != "" {
 			fmt.Fprint(os.Stdout, textPart)
 		}
 
-		// Feed results back to KI for next iteration
 		conversation = append(conversation, ConversationTurn{
 			UserInput: currentInput,
 			Response:  responseText,
@@ -338,11 +299,9 @@ func levelDecision(level ActionLevel) string {
 	return "unknown"
 }
 
-// buildAgentSystemPrompt extends the system prompt with action instructions
 func buildAgentSystemPrompt(shellCtx ShellContext, mem *Memory) string {
 	base := buildSystemPrompt(shellCtx, mem, "")
 
-	// Auto-gather context for agent
 	var autoContext strings.Builder
 	if shellCtx.Cwd != "" {
 		if out, _, exitCode := ExecuteAction(context.Background(), "ls -la", 5*time.Second); exitCode == 0 {
@@ -377,8 +336,7 @@ REGELN:
 	return base + agentInstructions
 }
 
-// extractActions finds ```action or ```bash blocks in the response.
-// In agent mode, both are treated as executable actions.
+// extractActions finds ```action, ```bash, or ```sh blocks in the response.
 func extractActions(text string) []string {
 	var actions []string
 	prefixes := []string{"```action\n", "```bash\n", "```sh\n"}
@@ -416,7 +374,6 @@ func extractActions(text string) []string {
 	return actions
 }
 
-// stripActions removes ```action/```bash/```sh blocks from text, keeping the rest
 func stripActions(text string) string {
 	prefixes := []string{"```action\n", "```bash\n", "```sh\n"}
 	for _, prefix := range prefixes {

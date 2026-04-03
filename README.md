@@ -180,6 +180,14 @@ Everything else is configurable in ~/.kish/permissions.yaml.
 
 ~5600 LOC Go · 18 tests · 95/95 bash compatibility · 12MB binary
 
+## What kish is not
+
+kish is not a coding agent. Tools like Claude Code, Gemini CLI, or Codex are AI-first agents that happen to run in a terminal — they read codebases, write files, plan multi-step refactors.
+
+kish is the opposite: a real shell that happens to have AI. You work in it like bash. You run scripts, pipe commands, manage jobs. When you need AI, you say `ki` — and it's there, with full context of what you've been doing. When you don't, it's silent and costs nothing.
+
+Think of it as: Claude Code is your AI pair programmer. kish is your terminal, with a brain.
+
 ## License
 
 Apache 2.0

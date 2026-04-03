@@ -7,16 +7,10 @@ import (
 	"strings"
 )
 
-// KI prefix -- configurable via config.yaml (ki.prefix), default "@ki"
-var kiPrefix = "@ki"
+var kiPrefix = "ki"
 
-// isKIRequest checks if input starts with the KI prefix or the ? shortcut.
-// No guessing, no heuristics. Explicit is better than implicit.
 func isKIRequest(input string) bool {
 	if strings.HasPrefix(input, kiPrefix+" ") || input == kiPrefix {
-		return true
-	}
-	if strings.HasPrefix(input, "ki ") || input == "ki" {
 		return true
 	}
 	if strings.HasPrefix(input, "? ") || input == "?" {
@@ -32,12 +26,6 @@ func stripKIPrefix(input string) string {
 	if input == kiPrefix {
 		return ""
 	}
-	if strings.HasPrefix(input, "ki ") {
-		return strings.TrimSpace(input[3:])
-	}
-	if input == "ki" {
-		return ""
-	}
 	if strings.HasPrefix(input, "? ") {
 		return strings.TrimSpace(input[2:])
 	}
@@ -51,20 +39,14 @@ func initKIPrefix(cfg *KishConfig) {
 	if cfg.KI.Prefix != "" {
 		kiPrefix = cfg.KI.Prefix
 	}
-	// Prevent conflicts with shell syntax
-	if kiPrefix == "" || kiPrefix == "|" || kiPrefix == ">" || kiPrefix == "<" {
-		kiPrefix = "@ki"
-	}
 }
 
 func commandInPath(name string) bool {
-	pathEnv := os.Getenv("PATH")
-	for _, dir := range strings.Split(pathEnv, ":") {
+	for _, dir := range strings.Split(os.Getenv("PATH"), ":") {
 		if dir == "" {
 			continue
 		}
-		fullPath := dir + "/" + name
-		info, err := os.Stat(fullPath)
+		info, err := os.Stat(dir + "/" + name)
 		if err == nil && !info.IsDir() && info.Mode()&0111 != 0 {
 			return true
 		}

@@ -5,9 +5,9 @@ A bash-compatible shell with native AI integration. Not a chatbot with shell acc
 ```
 $ ls -la                              → runs immediately (shell)
 $ git push origin main                → runs immediately (shell)
-$ @ki what's wrong with the build     → asks AI, shows answer
+$ ki what's wrong with the build     → asks AI, shows answer
 $ cat error.log | ki "summarize"      → pipes output to AI
-$ @ki check what's running on server  → AI runs ssh, docker ps, analyzes
+$ ki check what's running on server  → AI runs ssh, docker ps, analyzes
 ```
 
 ## Features
@@ -24,7 +24,7 @@ $ @ki check what's running on server  → AI runs ssh, docker ps, analyzes
 - Shebang support (`#!/usr/bin/env kish`)
 
 **AI** — powered by OpenAI + Anthropic (via heinzel provider library):
-- `@ki` / `ki` prefix for AI queries (explicit, no guessing)
+- `ki` / `ki` prefix for AI queries (explicit, no guessing)
 - `?` shortcut for quick context queries
 - `ki start` / `ki stop` — continuous dialog mode
 - Agent mode: AI runs read-only commands autonomously, confirms writes
@@ -37,7 +37,7 @@ $ @ki check what's running on server  → AI runs ssh, docker ps, analyzes
 - Streaming responses
 
 **Security** — paranoid by default:
-- AI only activates on `@ki` — never intercepts shell commands
+- AI only activates on `ki` — never intercepts shell commands
 - 5 action levels: Blocked → Confirm → AutoRead → AutoWrite → AutoExec
 - AI cannot modify its own config (only hardcoded block)
 - Destructive commands (rm, kill, sudo) need red confirmation
@@ -66,7 +66,7 @@ vi ~/.kish/config.yaml
 ki:
   provider: "openai"       # or "anthropic"
   model: "gpt-4o-mini"
-  prefix: "@ki"
+  prefix: "ki"              # configurable: "ai", "hey", etc.
 ```
 
 ## Usage
@@ -78,7 +78,7 @@ $ git status
 $ docker ps
 
 # Ask the AI
-$ @ki what does this error mean
+$ ki what does this error mean
 $ ki how do I find files larger than 100MB
 $ ? why did that fail
 
@@ -94,7 +94,7 @@ ki> what do you notice about the file sizes?
 ki> stop
 
 # Agent mode — gathers info autonomously
-$ @ki check what's running on the server and if anything is unhealthy
+$ ki check what's running on the server and if anything is unhealthy
 
 # Memory
 $ remember editor "I use vim"           # or: merke editor "I use vim"
@@ -121,8 +121,8 @@ $ kish -v 2                             # full debug output
 ## Security model
 
 ```
-Without @ki:  Direct shell. No AI. No checks. Your responsibility.
-With @ki:     Everything goes through the permission system.
+Without ki:  Direct shell. No AI. No checks. Your responsibility.
+With ki:     Everything goes through the permission system.
 
 Action levels:
   AutoRead    ls, cat, grep, docker ps    → runs silently

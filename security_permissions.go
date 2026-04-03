@@ -94,28 +94,28 @@ func (p *Permissions) CheckCommand(command string) (bool, bool, string) {
 	// Self-modification block (cannot be overridden)
 	if !readOnlyCmds[firstWord] {
 		if path, ok := commandTouchesPath(command, SelfModifyPaths); ok {
-			return false, false, fmt.Sprintf("KI darf eigene Config nicht ändern: %s", path)
+			return false, false, fmt.Sprintf("AI cannot modify its own config: %s", path)
 		}
 	}
 
 	// User-configurable blocks
 	for _, blocked := range p.BlockedCommands {
 		if strings.Contains(cmdLower, strings.ToLower(blocked)) {
-			return false, false, fmt.Sprintf("Blockiert: '%s'", blocked)
+			return false, false, fmt.Sprintf("Blocked: '%s'", blocked)
 		}
 	}
 
 	// Destructive patterns
 	for _, pattern := range p.DestructivePatterns {
 		if strings.Contains(cmdLower, strings.ToLower(pattern)) {
-			return true, true, fmt.Sprintf("Destruktiv: '%s'", pattern)
+			return true, true, fmt.Sprintf("Destructive: '%s'", pattern)
 		}
 	}
 
 	// Protected paths
 	if !readOnlyCmds[firstWord] {
 		if path, ok := commandTouchesPath(command, ProtectedPaths); ok {
-			return true, true, fmt.Sprintf("Geschützte Datei: %s", path)
+			return true, true, fmt.Sprintf("Protected file: %s", path)
 		}
 	}
 
@@ -126,18 +126,18 @@ func (p *Permissions) CheckCommand(command string) (bool, bool, string) {
 		"ld_preload=", "ld_library_path=",
 	} {
 		if strings.Contains(cmdLower, pattern) {
-			return true, true, fmt.Sprintf("Erhöhte Rechte: '%s'", pattern)
+			return true, true, fmt.Sprintf("Elevated: '%s'", pattern)
 		}
 	}
 
 	// Command substitution / network pipes
 	if !readOnlyCmds[firstWord] {
 		if strings.Contains(command, "$(") || strings.Contains(command, "`") {
-			return true, true, "Command-Substitution"
+			return true, true, "Command substitution"
 		}
 		for _, p := range []string{"| nc ", "| ncat ", "| netcat ", "| curl ", "| wget "} {
 			if strings.Contains(cmdLower, p) {
-				return true, true, "Pipe an Netzwerk-Tool"
+				return true, true, "Pipe to network tool"
 			}
 		}
 	}
@@ -152,7 +152,7 @@ func (p *Permissions) CheckCommand(command string) (bool, bool, string) {
 				return true, false, ""
 			}
 		}
-		return true, true, fmt.Sprintf("'%s' nicht in Whitelist", firstWord)
+		return true, true, fmt.Sprintf("'%s' not in whitelist", firstWord)
 	}
 
 	return true, true, ""

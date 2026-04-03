@@ -194,7 +194,7 @@ func handleBuiltin(line string) bool {
 		printHistory(fields)
 	case "ki:clear":
 		kiConversation.Clear()
-		fmt.Fprintln(os.Stderr, "Konversation zurückgesetzt.")
+		fmt.Fprintln(os.Stderr, "Conversation cleared.")
 	case "jobs":
 		jobTable.PrintJobs()
 	case "fg":
@@ -246,7 +246,7 @@ func handleKI(ctx context.Context, input string) {
 
 	if input == "" && len(shellContext.history) > 0 {
 		last := shellContext.history[0]
-		input = fmt.Sprintf("Erkläre was passiert ist: Befehl '%s' mit Exit-Code %d", last.Input, last.ExitCode)
+		input = fmt.Sprintf("Explain what happened: command '%s' with exit code %d", last.Input, last.ExitCode)
 		if last.Stderr != "" {
 			input += "\nStderr: " + last.Stderr
 		}
@@ -316,7 +316,7 @@ func executeWithPermissions(command string) {
 			}
 			return
 		case ConfirmEdit:
-			fmt.Fprintf(os.Stderr, "Befehl editieren: ")
+			fmt.Fprintf(os.Stderr, "Edit command: ")
 			edited, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 			if cmd := strings.TrimSpace(edited); cmd != "" {
 				executeWithPermissions(cmd)
@@ -378,9 +378,9 @@ func saveSessionOnExit() {
 		return
 	}
 	cwd, _ := os.Getwd()
-	summary := fmt.Sprintf("%d Befehle", len(shellContext.history))
+	summary := fmt.Sprintf("%d commands", len(shellContext.history))
 	if last := shellContext.history[0]; last.Input != "" {
-		summary += ", letzter: " + last.Input
+		summary += ", last: " + last.Input
 	}
 	kiMemory.SaveSessionSummary(summary, cwd, len(shellContext.history))
 }

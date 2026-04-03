@@ -58,7 +58,7 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 		if perms.ConfirmDestructive {
 			for _, pattern := range perms.DestructivePatterns {
 				if strings.Contains(cmdLower, strings.ToLower(pattern)) {
-					return ActionConfirm, fmt.Sprintf("Destruktiv: '%s'", pattern)
+					return ActionConfirm, fmt.Sprintf("Destructive: '%s'", pattern)
 				}
 			}
 		}
@@ -91,7 +91,7 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 				return ActionAutoRead, ""
 			}
 		}
-		return ActionConfirm, "SSH-Verbindung braucht Bestätigung"
+		return ActionConfirm, "SSH connection needs confirmation"
 	}
 
 	return ActionConfirm, ""
@@ -174,7 +174,7 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 	for step := 0; step < maxSteps; step++ {
 		select {
 		case <-ctx.Done():
-			fmt.Fprintln(os.Stderr, "\n[kish/ki] Abgebrochen.")
+			fmt.Fprintln(os.Stderr, "\n[kish/ki] Cancelled.")
 			return "", ctx.Err()
 		default:
 		}
@@ -185,7 +185,7 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 		resp, err := engine.Query(ctx, currentInput, shellCtx, &output)
 		if err != nil {
 			if ctx.Err() != nil {
-				fmt.Fprintln(os.Stderr, "\n[kish/ki] Abgebrochen.")
+				fmt.Fprintln(os.Stderr, "\n[kish/ki] Cancelled.")
 				return "", ctx.Err()
 			}
 			return "", err
@@ -277,10 +277,10 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 			UserInput: currentInput,
 			Response:  responseText,
 		})
-		currentInput = "Ergebnisse:\n" + actionResults.String() + "\nFasse das Ergebnis kurz und menschlich zusammen. Keine technischen Details (Exit-Codes, Befehle) wiederholen — der User hat sie schon gesehen."
+		currentInput = "Ergebnisse:\n" + actionResults.String() + "\nSummarize the results briefly. Don't repeat technical details — the user already saw them."
 	}
 
-	return "", fmt.Errorf("agent loop: max steps (%d) erreicht", maxSteps)
+	return "", fmt.Errorf("agent loop: max steps (%d) reached", maxSteps)
 }
 
 func levelDecision(level ActionLevel) string {

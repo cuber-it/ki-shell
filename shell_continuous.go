@@ -26,8 +26,8 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 		defer pe.SetSystemPromptOverride("")
 	}
 
-	fmt.Fprintln(os.Stderr, "\033[1;36m[ki]\033[0m Dialog gestartet. Shell-Befehle werden erkannt und ausgeführt.")
-	fmt.Fprintln(os.Stderr, "\033[2mBeenden mit: @ki stop\033[0m")
+	fmt.Fprintln(os.Stderr, "\033[1;36m[ki]\033[0m Dialog started. Shell commands are detected and executed.")
+	fmt.Fprintln(os.Stderr, "\033[2mEnd with: ki stop\033[0m")
 
 	rl, err := readline.NewFromConfig(&readline.Config{
 		Prompt:          "\033[1;36mki>\033[0m ",
@@ -49,7 +49,7 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 		line, err := rl.Readline()
 		if err != nil {
 			if err == readline.ErrInterrupt || err == io.EOF {
-				fmt.Fprintln(os.Stderr, "\033[1;36m[ki]\033[0m Dialog beendet.")
+				fmt.Fprintln(os.Stderr, "\033[1;36m[ki]\033[0m Dialog ended.")
 			}
 			return
 		}
@@ -72,7 +72,7 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 		}
 
 		if line == "stop" || line == "@ki stop" || line == "ki stop" {
-			fmt.Fprintln(os.Stderr, "\033[1;36m[ki]\033[0m Dialog beendet.")
+			fmt.Fprintln(os.Stderr, "\033[1;36m[ki]\033[0m Dialog ended.")
 			return
 		}
 
@@ -83,10 +83,10 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 					path := filepath.Join(kishDir(), "vault", cat, sanitizeFilename(memKey)+".yaml")
 					os.Remove(path)
 				}
-				fmt.Fprintf(os.Stderr, "\033[2mVergessen: %s\033[0m\n", memKey)
+				fmt.Fprintf(os.Stderr, "\033[2mForgotten: %s\033[0m\n", memKey)
 			} else {
 				kiMemory.Store(memKey, memVal, "fact", nil)
-				fmt.Fprintf(os.Stderr, "\033[2mGemerkt: %s → %s\033[0m\n", memKey, memVal)
+				fmt.Fprintf(os.Stderr, "\033[2mRemembered: %s → %s\033[0m\n", memKey, memVal)
 			}
 			continue
 		}
@@ -147,7 +147,7 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 
 			if err != nil {
 				if ctx.Err() != nil {
-					fmt.Fprintln(os.Stderr, "\n[ki] Abgebrochen.")
+					fmt.Fprintln(os.Stderr, "\n[ki] Cancelled.")
 					return
 				}
 				fmt.Fprintf(os.Stderr, "kish: ki error: %s\n", err)

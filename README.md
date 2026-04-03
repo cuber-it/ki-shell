@@ -66,8 +66,10 @@ vi ~/.kish/config.yaml
 ki:
   provider: "openai"       # or "anthropic"
   model: "gpt-4o-mini"
-  prefix: "ki"              # configurable: "ai", "hey", etc.
+  prefix: "ki"              # see note below
 ```
+
+> **Note on the `ki` prefix:** "KI" is the German word for AI (*Künstliche Intelligenz*) — that's where kish gets its name. The prefix is freely configurable — set it to `"ai"`, `"hey"`, `"ask"`, or whatever fits your workflow. But choose carefully: any word you pick will be intercepted and sent to the AI instead of being executed as a shell command.
 
 ## Usage
 

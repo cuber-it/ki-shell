@@ -30,7 +30,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				fmt.Fprintf(hc.Stderr, "kish: memory error: %s\n", err)
 				return interp.ExitStatus(1)
 			}
-			fmt.Fprintf(hc.Stderr, "Gemerkt: %s\n", key)
+			fmt.Fprintf(hc.Stderr, "Remembered: %s\n", key)
 			return nil
 
 		case "erinnere", "recall", "ki:recall":
@@ -41,7 +41,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			query := strings.Join(args[1:], " ")
 			results := kiMemory.Search(query)
 			if len(results) == 0 {
-				fmt.Fprintln(hc.Stderr, "Keine Erinnerung gefunden.")
+				fmt.Fprintln(hc.Stderr, "No memories found.")
 				return interp.ExitStatus(1)
 			}
 			for _, entry := range results {
@@ -59,12 +59,12 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				path := filepath.Join(kishDir(), "vault", cat, sanitizeFilename(key)+".yaml")
 				os.Remove(path)
 			}
-			fmt.Fprintf(hc.Stderr, "Vergessen: %s\n", key)
+			fmt.Fprintf(hc.Stderr, "Forgotten: %s\n", key)
 			return nil
 
 		case "ki:clear":
 			kiConversation.Clear()
-			fmt.Fprintln(hc.Stderr, "Konversation zurückgesetzt.")
+			fmt.Fprintln(hc.Stderr, "Conversation cleared.")
 			return nil
 
 		case "ki:log":
@@ -90,7 +90,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			if shellLog != nil {
 				entries := shellLog.Search(query, 10)
 				if len(entries) == 0 {
-					fmt.Fprintln(hc.Stderr, "Keine Treffer.")
+					fmt.Fprintln(hc.Stderr, "No matches found.")
 				}
 				for _, entry := range entries {
 					fmt.Fprintln(hc.Stdout, entry)
@@ -127,7 +127,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 					}
 				}
 			} else {
-				fmt.Fprintln(hc.Stderr, "Cost-Tracking nur mit heinzel Provider verfügbar")
+				fmt.Fprintln(hc.Stderr, "Cost tracking requires heinzel provider")
 			}
 			return nil
 
@@ -140,7 +140,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				fmt.Fprintf(hc.Stderr, "kish: %s\n", err)
 				return interp.ExitStatus(1)
 			}
-			fmt.Fprintf(hc.Stderr, "Prompt-Variante gewechselt: %s\n", args[1])
+			fmt.Fprintf(hc.Stderr, "Prompt variant switched to: %s\n", args[1])
 			return nil
 
 		case "ki:prompt":
@@ -158,13 +158,13 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			if audit != nil {
 				audit.PrintRecent(n)
 			} else {
-				fmt.Fprintln(hc.Stderr, "Audit-Log nicht initialisiert")
+				fmt.Fprintln(hc.Stderr, "Audit log not initialized")
 			}
 			return nil
 
 		case "ki:mcp":
 			if mcpClient == nil {
-				fmt.Fprintln(hc.Stderr, "Keine MCP-Server konfiguriert. Siehe ~/.kish/config.yaml")
+				fmt.Fprintln(hc.Stderr, "No MCP servers configured. See ~/.kish/config.yaml")
 				return nil
 			}
 			if len(args) > 1 {

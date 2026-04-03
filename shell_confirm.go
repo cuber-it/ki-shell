@@ -36,7 +36,7 @@ func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
 	confirmedMu.Lock()
 	if confirmedCommands[command] {
 		confirmedMu.Unlock()
-		fmt.Fprintf(os.Stderr, "\033[2m→ %s (bereits bestätigt)\033[0m\n", command)
+		fmt.Fprintf(os.Stderr, "\033[2m→ %s (already confirmed)\033[0m\n", command)
 		return ConfirmYes
 	}
 	confirmedMu.Unlock()
@@ -45,24 +45,24 @@ func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
 	switch level {
 	case ConfirmDestructive:
 		color = "\033[1;31m"
-		label = "ACHTUNG"
+		label = "WARNING"
 	default:
 		color = "\033[1;33m"
-		label = "Vorschlag"
+		label = "Suggestion"
 	}
 
 	fmt.Fprintf(os.Stderr, "%s[%s]\033[0m %s\n", color, label, command)
 	if reason != "" {
 		fmt.Fprintf(os.Stderr, "\033[2m%s\033[0m\n", reason)
 	}
-	fmt.Fprintf(os.Stderr, "[j]a / [n]ein / [e]ditieren: ")
+	fmt.Fprintf(os.Stderr, "[y]es / [n]o / [e]dit: ")
 
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 	input = strings.TrimSpace(strings.ToLower(input))
 
 	switch input {
-	case "j", "y", "ja", "yes":
+	case "y", "j", "yes", "ja":
 		confirmedMu.Lock()
 		confirmedCommands[command] = true
 		confirmedMu.Unlock()

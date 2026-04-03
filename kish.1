@@ -1,0 +1,187 @@
+.TH KISH 1 "April 2026" "kish 0.1.0" "User Commands"
+.SH NAME
+kish \- the KI shell
+.SH SYNOPSIS
+.B kish
+[\fIOPTIONS\fR] [\fISCRIPT\fR [\fIARGS\fR...]]
+.SH DESCRIPTION
+kish is a bash-compatible shell with native AI integration. It combines a full
+POSIX shell (based on mvdan/sh) with an AI engine (OpenAI) that can be invoked
+via the @ki prefix.
+.PP
+Without @ki, kish behaves exactly like bash. With @ki, it sends queries to the
+configured AI provider and can execute commands autonomously (read-only) or with
+user confirmation (write operations).
+.SH OPTIONS
+.TP
+.B \-c \fIcommand\fR
+Execute \fIcommand\fR and exit. Supports @ki prefix for AI queries.
+.TP
+.B \-i
+Force interactive mode even when stdin is not a terminal.
+.TP
+.B \-l
+Act as a login shell. Reads /etc/profile and ~/.profile.
+.TP
+.B \-v \fIlevel\fR
+Verbose output for AI operations. 0=quiet (default), 1=show actions, 2=full debug.
+.TP
+.B \-\-norc
+Do not read ~/.kishrc, ~/.bashrc, or /etc/bash.bashrc.
+.TP
+.B \-\-noprofile
+Do not read /etc/profile, ~/.bash_profile, or ~/.profile.
+.TP
+.B \-\-version
+Print version and exit.
+.TP
+.B \-\-help
+Show help and exit.
+.SH KI COMMANDS
+These commands are available in interactive mode:
+.TP
+.B @ki \fIquery\fR
+Send a query to the AI engine. The prefix is configurable via ki.prefix in config.yaml.
+.TP
+.B ? [\fIquery\fR]
+Quick context query. Without arguments, analyzes the last command and its output.
+.TP
+.B ki:status
+Show AI engine status, memory count, and permissions.
+.TP
+.B ki:log [\fIn\fR]
+Show last \fIn\fR shell log entries (default 20).
+.TP
+.B ki:search \fIquery\fR
+Search the shell log for matching entries.
+.TP
+.B ki:audit [\fIn\fR]
+Show last \fIn\fR audit log entries (default 20).
+.TP
+.B ki:clear
+Reset conversation history.
+.TP
+.B merke \fIkey\fR \fIvalue\fR
+Store a fact in persistent memory.
+.TP
+.B erinnere \fIquery\fR
+Search persistent memory.
+.TP
+.B vergiss \fIkey\fR
+Delete a fact from memory.
+.SH SECURITY
+kish uses a layered permission system for AI operations:
+.PP
+.B Action Levels:
+.RS
+.TP
+.B AutoRead
+Commands like ls, cat, grep, docker ps execute automatically.
+.TP
+.B Confirm
+Write operations (rm, mv, git push) require user confirmation [j/n/e].
+.TP
+.B Blocked
+AI cannot modify its own configuration (only hardcoded block).
+.RE
+.PP
+All AI actions are logged to ~/.kish/audit.log. Secrets in shell output are
+scrubbed before logging (API keys, passwords, JWTs, SSH keys).
+.PP
+Rate limiting: 20 queries/minute, 200 queries/hour (configurable).
+.PP
+The AI is only active when explicitly invoked via @ki. Shell commands without
+@ki bypass the AI entirely.
+.SH FILES
+.TP
+.B ~/.kish/config.yaml
+AI provider configuration (provider, model, API key, prefix).
+.TP
+.B ~/.kish/permissions.yaml
+Security settings (action levels, blocked commands, context filtering).
+.TP
+.B ~/.kish/kishrc
+Shell startup file (aliases, functions, variables). Read on interactive startup.
+.TP
+.B ~/.kish/profile
+Login profile. Read on login shell startup (after /etc/profile).
+.TP
+.B ~/.kish/history
+Command history (readline, 10000 entries).
+.TP
+.B ~/.kish/shell.log
+Persistent activity log with command output. Secret-scrubbed. Rotation at 5MB.
+.TP
+.B ~/.kish/audit.log
+AI action audit trail. Append-only. Rotation at 10MB.
+.TP
+.B ~/.kish/vault/
+Persistent AI memory. Subdirectories: fact/, session/, scratch/.
+.TP
+.B ~/.kish/completions/*.yaml
+YAML-based tab completion specs for individual commands.
+.TP
+.B .kishrc
+Project-local startup file. Read when entering a directory with this file.
+.SH STARTUP FILES
+.B Login shell:
+/etc/profile \(-> ~/.bash_profile | ~/.bash_login | ~/.profile \(-> ~/.kish/profile
+.PP
+.B Interactive shell:
+/etc/kish.kishrc | /etc/bash.bashrc \(-> ~/.kishrc | ~/.bashrc \(-> ./.kishrc
+.SH ENVIRONMENT
+.TP
+.B OPENAI_API_KEY
+API key for OpenAI provider.
+.TP
+.B ANTHROPIC_API_KEY
+API key for Anthropic provider (planned).
+.TP
+.B KISH_PS1
+Custom prompt string (PS1-compatible escapes).
+.TP
+.B KISH_GOD_MODE=yes
+Disable all hardcoded safety checks. Use at your own risk.
+.SH COMPLETION SPECS
+Tab completions for specific commands are defined in YAML files:
+.PP
+.nf
+# ~/.kish/completions/git.yaml
+subcommands:
+  - checkout
+  - commit
+  - push
+args:
+  checkout: "$(git branch --format='%(refname:short)')"
+  add: "$(git status --porcelain | cut -c4-)"
+.fi
+.SH EXAMPLES
+.nf
+# Interactive shell
+kish
+
+# Run a command
+kish -c 'echo hello'
+
+# Ask AI
+kish -c '@ki what does this error mean'
+
+# Run script with arguments
+kish script.sh arg1 arg2
+
+# Debug AI operations
+kish -v 2
+
+# Pipe to AI
+echo "error log" | kish -c 'ki "summarize"'
+.fi
+.SH BUGS
+Report bugs at https://github.com/cuber-it/kish/issues
+.SH SEE ALSO
+.BR bash (1),
+.BR sh (1),
+.BR zsh (1)
+.SH AUTHORS
+ucuber / cuber IT service
+.br
+Built with AI assistance (Claude)

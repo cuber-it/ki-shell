@@ -1,0 +1,38 @@
+# Binary
+kish
+kish-*
+*.exe
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# Test artifacts
+*.test
+*.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Internal documentation
+intern/
+
+# Config with secrets (user-specific)
+# These are generated at runtime, not part of the repo
+config.yaml
+permissions.yaml
+
+# Runtime data
+*.db
+*.log
+vault/
+history
+history_ts
+sessions/

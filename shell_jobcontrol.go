@@ -16,19 +16,13 @@ import (
 	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
 )
 
-// foregroundPID tracks the currently running foreground process group.
 var foregroundPID atomic.Int32
-
-// shellPGID is the shell's own process group
 var shellPGID int
-
-// isInteractiveMode is set when the REPL is running
 var isInteractiveMode bool
 
 func initJobControl() {
 	shellPGID = syscall.Getpgrp()
 
-	// SIGCHLD handler for background job notifications
 	sigchld := make(chan os.Signal, 10)
 	signal.Notify(sigchld, syscall.SIGCHLD)
 	go func() {
@@ -39,11 +33,8 @@ func initJobControl() {
 	}()
 }
 
-// jobControlMiddleware wraps the exec handler for full job control:
-// 1. Process groups (setpgid) for each command
-// 2. Terminal control (tcsetpgrp) for foreground jobs
-// 3. SIGTSTP detection (Ctrl+Z → stopped)
-// 4. Foreground PID tracking for signal forwarding
+// jobControlMiddleware wraps the exec handler for job control:
+// process groups, terminal control, SIGTSTP detection, foreground PID tracking.
 func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 	return func(ctx context.Context, args []string) error {
 		hc := interp.HandlerCtx(ctx)
@@ -53,8 +44,8 @@ func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			return interp.ExitStatus(127)
 		}
 
-		// Use real file descriptors for stdout/stderr so interactive programs
-		// (vim, htop, less) detect a proper terminal via isatty().
+		// Use real file descriptors so interactive programs (vim, htop)
+		// detect a proper terminal via isatty().
 		stdout := hc.Stdout
 		stderr := hc.Stderr
 		if tw, ok := stdout.(*TeeWriter); ok && tw.file != nil {
@@ -74,8 +65,7 @@ func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			Stderr: stderr,
 		}
 
-		err = cmd.Start()
-		if err != nil {
+		if err = cmd.Start(); err != nil {
 			fmt.Fprintln(hc.Stderr, err)
 			return interp.ExitStatus(127)
 		}
@@ -84,7 +74,6 @@ func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 		foregroundPID.Store(pid)
 		defer foregroundPID.Store(0)
 
-		// Context cancellation handler
 		stopf := context.AfterFunc(ctx, func() {
 			_ = cmd.Process.Signal(os.Interrupt)
 			time.Sleep(2 * time.Second)
@@ -93,7 +82,6 @@ func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 		defer stopf()
 
 		err = cmd.Wait()
-
 		if err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
 				if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {

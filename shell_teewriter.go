@@ -10,18 +10,17 @@ import (
 )
 
 // TeeWriter writes to an underlying writer AND captures a copy in a buffer.
-// Used to capture stdout/stderr for the shell log while still showing output to the user.
-// Implements os.File-like interface so programs like vim detect a real terminal.
+// Used to capture stdout/stderr for the shell log while still showing output.
 type TeeWriter struct {
 	mu     sync.Mutex
-	writer io.Writer // original destination (os.Stdout / os.Stderr)
-	file   *os.File  // the underlying file (for Fd() — terminal detection)
+	writer io.Writer
+	file   *os.File // underlying file for Fd() -- terminal detection
 	buffer bytes.Buffer
-	limit  int // max bytes to capture (0 = unlimited)
+	limit  int
 }
 
 // Fd returns the file descriptor of the underlying writer.
-// This is critical — programs like vim call isatty(fd) to detect terminals.
+// Critical for programs like vim that call isatty(fd).
 func (tw *TeeWriter) Fd() uintptr {
 	if tw.file != nil {
 		return tw.file.Fd()
@@ -31,10 +30,9 @@ func (tw *TeeWriter) Fd() uintptr {
 
 func newTeeWriter(writer io.Writer, limit int) *TeeWriter {
 	if limit == 0 {
-		limit = 64 * 1024 // 64KB default
+		limit = 64 * 1024
 	}
 	tw := &TeeWriter{writer: writer, limit: limit}
-	// Preserve the underlying *os.File for terminal detection
 	if f, ok := writer.(*os.File); ok {
 		tw.file = f
 	}
@@ -42,10 +40,8 @@ func newTeeWriter(writer io.Writer, limit int) *TeeWriter {
 }
 
 func (tw *TeeWriter) Write(p []byte) (int, error) {
-	// Always write to the original destination
 	n, err := tw.writer.Write(p)
 
-	// Capture in buffer (up to limit)
 	tw.mu.Lock()
 	if tw.buffer.Len() < tw.limit {
 		remaining := tw.limit - tw.buffer.Len()
@@ -60,7 +56,6 @@ func (tw *TeeWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// String returns the captured output and resets the buffer
 func (tw *TeeWriter) String() string {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()
@@ -69,7 +64,6 @@ func (tw *TeeWriter) String() string {
 	return s
 }
 
-// Reset clears the captured buffer
 func (tw *TeeWriter) Reset() {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()

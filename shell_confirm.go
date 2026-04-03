@@ -10,34 +10,29 @@ import (
 	"sync"
 )
 
-// ConfirmLevel indicates the severity of the confirmation request
 type ConfirmLevel int
 
 const (
-	ConfirmNormal      ConfirmLevel = iota // yellow — standard confirmation
-	ConfirmDestructive                     // red — dangerous operation
+	ConfirmNormal      ConfirmLevel = iota
+	ConfirmDestructive
 )
 
-// ConfirmResult is what the user chose
 type ConfirmResult int
 
 const (
 	ConfirmYes  ConfirmResult = iota
 	ConfirmNo
-	ConfirmEdit // user wants to modify the command before executing
+	ConfirmEdit
 )
 
-// confirmedCommands tracks commands the user already confirmed in this session.
-// Prevents asking the same question twice for repeated patterns.
+// confirmedCommands tracks commands already confirmed in this session
+// to prevent asking the same question twice for repeated patterns.
 var (
 	confirmedMu       sync.Mutex
 	confirmedCommands = make(map[string]bool)
 )
 
-// Confirm asks the user for confirmation with colored output.
-// Returns the user's choice.
 func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
-	// Check if already confirmed in this session
 	confirmedMu.Lock()
 	if confirmedCommands[command] {
 		confirmedMu.Unlock()
@@ -46,14 +41,13 @@ func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
 	}
 	confirmedMu.Unlock()
 
-	// Color and label based on level
 	var color, label string
 	switch level {
 	case ConfirmDestructive:
-		color = "\033[1;31m" // bold red
+		color = "\033[1;31m"
 		label = "ACHTUNG"
-	default: // ConfirmNormal
-		color = "\033[1;33m" // bold yellow
+	default:
+		color = "\033[1;33m"
 		label = "Vorschlag"
 	}
 
@@ -69,7 +63,6 @@ func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
 
 	switch input {
 	case "j", "y", "ja", "yes":
-		// Remember for this session
 		confirmedMu.Lock()
 		confirmedCommands[command] = true
 		confirmedMu.Unlock()
@@ -81,7 +74,6 @@ func Confirm(command string, reason string, level ConfirmLevel) ConfirmResult {
 	}
 }
 
-// ConfirmSimple asks a simple yes/no question without edit option.
 func ConfirmSimple(message string) bool {
 	fmt.Fprintf(os.Stderr, "%s [j/n] ", message)
 	reader := bufio.NewReader(os.Stdin)

@@ -17,7 +17,6 @@ type FilterWriter struct {
 	patterns []string
 }
 
-// Known mvdan/sh warnings that are harmless during bashrc loading
 var bashrcSuppressPatterns = []string{
 	"complete: unimplemented",
 	"shopt: unsupported option",
@@ -56,10 +55,9 @@ func (fw *FilterWriter) Write(p []byte) (int, error) {
 		}
 		fw.writer.Write([]byte(line + "\n"))
 	}
-	return len(p), nil // report all bytes consumed
+	return len(p), nil
 }
 
-// SetSuppress enables/disables filtering
 func (fw *FilterWriter) SetSuppress(suppress bool) {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()

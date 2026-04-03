@@ -8,26 +8,25 @@ import (
 	"strings"
 )
 
-// VerboseLevel controls how much the KI shows about its internal process
-// -v0 (default): minimal — only KI response text, auto-read actions as dim "→ cmd"
-// -v1: show thinking — actions requested, step count, what KI is doing
-// -v2: full debug — system prompt, KI request, KI response, action results
+// verboseLevel controls how much the KI shows about its internal process.
+// -v0 (default): minimal -- only KI response text, auto-read actions as dim arrow
+// -v1: show thinking -- actions requested, step count, what KI is doing
+// -v2: full debug -- system prompt, KI request, KI response, action results
 var verboseLevel int
 
-// vPrint prints a message at the given verbose level
 func vPrint(level int, format string, args ...interface{}) {
 	if verboseLevel < level {
 		return
 	}
 	prefix := ""
-	color := "\033[2m" // dim
+	color := "\033[2m"
 	switch level {
 	case 1:
 		prefix = "[v1] "
-		color = "\033[2;36m" // dim cyan
+		color = "\033[2;36m"
 	case 2:
 		prefix = "[v2] "
-		color = "\033[2;35m" // dim magenta
+		color = "\033[2;35m"
 	}
 	msg := fmt.Sprintf(format, args...)
 	for _, line := range strings.Split(msg, "\n") {
@@ -62,7 +61,6 @@ func vAction(action string, level ActionLevel, step int, maxSteps int) {
 	fmt.Fprintf(os.Stderr, "%s[step %d/%d] [%s] → %s\033[0m\n", color, step, maxSteps, levelName, action)
 }
 
-// vSystemPrompt logs the system prompt at v2 level
 func vSystemPrompt(prompt string) {
 	if verboseLevel < 2 {
 		return
@@ -76,7 +74,6 @@ func vSystemPrompt(prompt string) {
 	vPrint(2, "=== END SYSTEM PROMPT ===")
 }
 
-// vKIRequest logs the user input sent to the KI
 func vKIRequest(input string) {
 	if verboseLevel < 2 {
 		return
@@ -86,7 +83,6 @@ func vKIRequest(input string) {
 	vPrint(2, "=== END KI REQUEST ===")
 }
 
-// vKIResponse logs the raw KI response
 func vKIResponse(response string) {
 	if verboseLevel < 2 {
 		return
@@ -100,7 +96,6 @@ func vKIResponse(response string) {
 	vPrint(2, "=== END KI RESPONSE ===")
 }
 
-// vActionResult logs the output of an executed action
 func vActionResult(action string, exitCode int, stdout, stderr string) {
 	if verboseLevel < 2 {
 		return
@@ -119,7 +114,6 @@ func vActionResult(action string, exitCode int, stdout, stderr string) {
 	vPrint(2, "=== END ACTION RESULT ===")
 }
 
-// vStep logs an agent loop iteration
 func vStep(step, maxSteps int, input string) {
 	if verboseLevel < 1 {
 		return

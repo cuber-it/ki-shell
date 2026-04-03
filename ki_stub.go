@@ -11,7 +11,6 @@ import (
 	"github.com/cuber-it/heinzel-ai-core-go/provider"
 )
 
-// Pricing tables — USD per 1M tokens (as of early 2026)
 var openaiPricing = map[string]provider.ModelPricing{
 	"gpt-4o":       {Input: 2.50, Output: 10.00},
 	"gpt-4o-mini":  {Input: 0.15, Output: 0.60},
@@ -29,8 +28,6 @@ var anthropicPricing = map[string]provider.ModelPricing{
 	"claude-haiku-4-5-20251001": {Input: 0.80, Output: 4.00},
 }
 
-// initKIEngine creates the appropriate KI engine based on config.
-// Uses heinzel-ai-core-go/provider for all LLM backends.
 func initKIEngine(cfg *KishConfig) KIEngine {
 	apiKey := cfg.KI.APIKey
 
@@ -51,8 +48,7 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 		if cfg.KI.BaseURL != "" && cfg.KI.BaseURL != "http://localhost:11434" {
 			provCfg.APIBase = cfg.KI.BaseURL
 		}
-		p := provider.NewOpenAI(provCfg)
-		return NewProviderEngine(p, provCfg)
+		return NewProviderEngine(provider.NewOpenAI(provCfg), provCfg)
 
 	case "anthropic":
 		if apiKey == "" {
@@ -67,8 +63,7 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 			DefaultModel: cfg.KI.Model,
 			Pricing:      anthropicPricing,
 		}
-		p := provider.NewAnthropic(provCfg)
-		return NewProviderEngine(p, provCfg)
+		return NewProviderEngine(provider.NewAnthropic(provCfg), provCfg)
 
 	case "":
 		return &StubKIEngine{reason: "no provider configured"}
@@ -77,8 +72,7 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 	}
 }
 
-// StubKIEngine is a placeholder that shows KI is not configured.
-// Replaced by a real engine (heinzel-core, Ollama, etc.) when configured.
+// StubKIEngine is a placeholder when no KI provider is configured.
 type StubKIEngine struct {
 	reason string
 }

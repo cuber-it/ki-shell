@@ -12,14 +12,12 @@ import (
 	"time"
 )
 
-// HistoryEntry stores a command with timestamp
 type HistoryEntry struct {
 	Num     int
 	Time    time.Time
 	Command string
 }
 
-// KishHistory manages timestamped command history
 type KishHistory struct {
 	mu      sync.Mutex
 	entries []HistoryEntry
@@ -35,7 +33,6 @@ func initHistory() {
 	if err != nil {
 		return
 	}
-
 	kh := &KishHistory{file: file, path: path}
 	kh.load()
 	kishHistory = kh
@@ -47,7 +44,6 @@ func closeHistory() {
 	}
 }
 
-// Add records a command with the current timestamp
 func (kh *KishHistory) Add(command string) {
 	if kh == nil || command == "" {
 		return
@@ -61,12 +57,9 @@ func (kh *KishHistory) Add(command string) {
 		Command: command,
 	}
 	kh.entries = append(kh.entries, entry)
-
-	// Append to file: timestamp\tcommand
 	fmt.Fprintf(kh.file, "%d\t%s\n", entry.Time.Unix(), command)
 }
 
-// load reads the history file
 func (kh *KishHistory) load() {
 	data, err := os.ReadFile(kh.path)
 	if err != nil {
@@ -86,7 +79,6 @@ func (kh *KishHistory) load() {
 			cmd = parts[1]
 		} else {
 			cmd = line // legacy format without timestamp
-			ts = time.Time{}
 		}
 		kh.entries = append(kh.entries, HistoryEntry{
 			Num:     i + 1,
@@ -96,21 +88,18 @@ func (kh *KishHistory) load() {
 	}
 }
 
-// Last returns the last N entries
 func (kh *KishHistory) Last(n int) []HistoryEntry {
 	if kh == nil {
 		return nil
 	}
 	kh.mu.Lock()
 	defer kh.mu.Unlock()
-
 	if n >= len(kh.entries) {
 		return kh.entries
 	}
 	return kh.entries[len(kh.entries)-n:]
 }
 
-// All returns all entries
 func (kh *KishHistory) All() []HistoryEntry {
 	if kh == nil {
 		return nil
@@ -120,10 +109,8 @@ func (kh *KishHistory) All() []HistoryEntry {
 	return kh.entries
 }
 
-// printHistory is the "history" builtin
 func printHistory(fields []string) {
 	if kishHistory == nil {
-		// Fallback: plain readline history
 		data, err := os.ReadFile(filepath.Join(kishDir(), "history"))
 		if err != nil {
 			return

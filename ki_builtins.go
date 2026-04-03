@@ -19,7 +19,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 		hc := interp.HandlerCtx(ctx)
 
 		switch args[0] {
-		case "merke", "ki:remember":
+		case "merke", "remember", "ki:remember":
 			if len(args) < 3 {
 				fmt.Fprintln(hc.Stderr, "Usage: merke <key> <value...>")
 				return interp.ExitStatus(1)
@@ -33,7 +33,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			fmt.Fprintf(hc.Stderr, "Gemerkt: %s\n", key)
 			return nil
 
-		case "erinnere", "ki:recall":
+		case "erinnere", "recall", "ki:recall":
 			if len(args) < 2 {
 				fmt.Fprintln(hc.Stderr, "Usage: erinnere <query>")
 				return interp.ExitStatus(1)
@@ -49,7 +49,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			}
 			return nil
 
-		case "vergiss", "ki:forget":
+		case "vergiss", "forget", "ki:forget":
 			if len(args) < 2 {
 				fmt.Fprintln(hc.Stderr, "Usage: vergiss <key>")
 				return interp.ExitStatus(1)

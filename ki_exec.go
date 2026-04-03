@@ -13,10 +13,8 @@ import (
 
 // kiExecMiddleware intercepts the KI prefix command in pipes.
 // Allows: cat log | @ki "summarize"
-// Also keeps "ki" as alias for backwards compatibility.
 func kiExecMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 	return func(ctx context.Context, args []string) error {
-		// Match the configured prefix (without @) or "ki"
 		cmdName := args[0]
 		prefixName := strings.TrimPrefix(kiPrefix, "@")
 		if cmdName != prefixName && cmdName != "@"+prefixName && cmdName != "ki" {
@@ -24,11 +22,8 @@ func kiExecMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 		}
 
 		hc := interp.HandlerCtx(ctx)
-
-		// Build query from args
 		query := strings.Join(args[1:], " ")
 
-		// Read piped stdin if available
 		var pipeInput string
 		if hc.Stdin != nil {
 			data, err := io.ReadAll(hc.Stdin)
@@ -37,7 +32,6 @@ func kiExecMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			}
 		}
 
-		// Combine pipe input with query
 		fullQuery := query
 		if pipeInput != "" {
 			if query != "" {

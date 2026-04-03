@@ -7,28 +7,24 @@ import (
 	"strings"
 )
 
-// KI prefix — configurable via config.yaml (ki.prefix), default "@ki"
+// KI prefix -- configurable via config.yaml (ki.prefix), default "@ki"
 var kiPrefix = "@ki"
 
 // isKIRequest checks if input starts with the KI prefix or the ? shortcut.
 // No guessing, no heuristics. Explicit is better than implicit.
-// Also recognizes "ki " as shorthand (so alias ki=@ki isn't needed).
 func isKIRequest(input string) bool {
 	if strings.HasPrefix(input, kiPrefix+" ") || input == kiPrefix {
 		return true
 	}
-	// "ki" as built-in shorthand (always works, no alias needed)
 	if strings.HasPrefix(input, "ki ") || input == "ki" {
 		return true
 	}
-	// ? shortcut for quick context queries
 	if strings.HasPrefix(input, "? ") || input == "?" {
 		return true
 	}
 	return false
 }
 
-// stripKIPrefix removes the KI prefix from input, returning the actual query.
 func stripKIPrefix(input string) string {
 	if strings.HasPrefix(input, kiPrefix+" ") {
 		return strings.TrimSpace(input[len(kiPrefix)+1:])
@@ -51,18 +47,16 @@ func stripKIPrefix(input string) string {
 	return input
 }
 
-// initKIPrefix sets the prefix from config
 func initKIPrefix(cfg *KishConfig) {
 	if cfg.KI.Prefix != "" {
 		kiPrefix = cfg.KI.Prefix
 	}
-	// Ensure prefix doesn't conflict with shell syntax
+	// Prevent conflicts with shell syntax
 	if kiPrefix == "" || kiPrefix == "|" || kiPrefix == ">" || kiPrefix == "<" {
 		kiPrefix = "@ki"
 	}
 }
 
-// commandInPath checks if a command exists in $PATH (still needed for completion)
 func commandInPath(name string) bool {
 	pathEnv := os.Getenv("PATH")
 	for _, dir := range strings.Split(pathEnv, ":") {

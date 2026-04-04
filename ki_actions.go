@@ -24,10 +24,20 @@ const (
 	ActionAutoExec                     // execute silently, anything goes (sudo, rm — god mode)
 )
 
-// Configurable via permissions.yaml.
+// Commands that need a real terminal — never auto-execute in agent loop.
+var interactiveCommands = map[string]bool{
+	"vi": true, "vim": true, "nvim": true, "nano": true, "emacs": true,
+	"visudo": true, "vipw": true, "vigr": true, "crontab": true,
+	"less": true, "more": true, "top": true, "htop": true, "btop": true,
+	"tmux": true, "screen": true, "mc": true,
+	"python": true, "python3": true, "node": true, "irb": true,
+	"mysql": true, "psql": true, "sqlite3": true, "redis-cli": true,
+	"ssh": true,
+}
+
 var DefaultReadOnlyCommands = []string{
 	"ls", "cat", "head", "tail", "wc", "file", "stat", "find", "locate",
-	"du", "df", "tree", "less", "more", "realpath", "basename", "dirname",
+	"du", "df", "tree", "realpath", "basename", "dirname",
 	"grep", "awk", "sed", "sort", "uniq", "cut", "tr", "diff", "comm",
 	"uname", "hostname", "whoami", "id", "date", "uptime", "free",
 	"lsb_release", "arch", "nproc", "lscpu", "lsblk",
@@ -50,6 +60,22 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 	allowed, _, reason := perms.CheckCommand(command)
 	if !allowed {
 		return ActionBlocked, reason
+	}
+
+	// Interactive commands need a real terminal — never auto-execute
+	firstWord := strings.Fields(command)[0]
+	if firstWord == "ssh" {
+		// ssh with remote command is OK, ssh without is interactive
+		if extractSSHCommand(command) == "" {
+			return ActionConfirm, "Interactive: ssh session needs terminal"
+		}
+	} else if interactiveCommands[firstWord] {
+		return ActionConfirm, "Interactive: needs terminal"
+	} else if strings.HasPrefix(firstWord, "sudo") && len(strings.Fields(command)) > 1 {
+		sudoCmd := strings.Fields(command)[1]
+		if interactiveCommands[sudoCmd] {
+			return ActionConfirm, "Interactive: needs terminal"
+		}
 	}
 
 	cmdLower := strings.ToLower(strings.TrimSpace(command))

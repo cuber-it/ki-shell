@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -16,13 +17,17 @@ type HistoryEntry struct {
 	Num     int
 	Time    time.Time
 	Command string
+	TTY     string
+	PID     int
 }
 
 type KishHistory struct {
-	mu      sync.Mutex
+	mu   sync.Mutex
 	entries []HistoryEntry
-	file    *os.File
-	path    string
+	file *os.File
+	path string
+	tty  string
+	pid  int
 }
 
 var kishHistory *KishHistory
@@ -33,17 +38,21 @@ func initHistory() {
 	if err != nil {
 		return
 	}
-	kh := &KishHistory{file: file, path: path}
+
+	tty := ttyName()
+	kh := &KishHistory{file: file, path: path, tty: tty, pid: os.Getpid()}
 	kh.load()
 	kishHistory = kh
 }
 
 func closeHistory() {
 	if kishHistory != nil && kishHistory.file != nil {
+		kishHistory.file.Sync()
 		kishHistory.file.Close()
 	}
 }
 
+// Add writes a command to history. Synced immediately — kill-safe.
 func (kh *KishHistory) Add(command string) {
 	if kh == nil || command == "" {
 		return
@@ -55,9 +64,14 @@ func (kh *KishHistory) Add(command string) {
 		Num:     len(kh.entries) + 1,
 		Time:    time.Now(),
 		Command: command,
+		TTY:     kh.tty,
+		PID:     kh.pid,
 	}
 	kh.entries = append(kh.entries, entry)
-	fmt.Fprintf(kh.file, "%d\t%s\n", entry.Time.Unix(), command)
+
+	// Format: timestamp\ttty\tpid\tcommand
+	fmt.Fprintf(kh.file, "%d\t%s\t%d\t%s\n", entry.Time.Unix(), kh.tty, kh.pid, command)
+	kh.file.Sync() // flush to disk immediately — survives kill
 }
 
 func (kh *KishHistory) load() {
@@ -69,22 +83,27 @@ func (kh *KishHistory) load() {
 		if line == "" {
 			continue
 		}
-		parts := strings.SplitN(line, "\t", 2)
-		var ts time.Time
-		var cmd string
-		if len(parts) == 2 {
+		parts := strings.SplitN(line, "\t", 4)
+		var entry HistoryEntry
+		entry.Num = i + 1
+
+		switch len(parts) {
+		case 4: // new format: timestamp\ttty\tpid\tcommand
 			if unix, err := strconv.ParseInt(parts[0], 10, 64); err == nil {
-				ts = time.Unix(unix, 0)
+				entry.Time = time.Unix(unix, 0)
 			}
-			cmd = parts[1]
-		} else {
-			cmd = line // legacy format without timestamp
+			entry.TTY = parts[1]
+			entry.PID, _ = strconv.Atoi(parts[2])
+			entry.Command = parts[3]
+		case 2: // old format: timestamp\tcommand
+			if unix, err := strconv.ParseInt(parts[0], 10, 64); err == nil {
+				entry.Time = time.Unix(unix, 0)
+			}
+			entry.Command = parts[1]
+		default: // legacy: just command
+			entry.Command = line
 		}
-		kh.entries = append(kh.entries, HistoryEntry{
-			Num:     i + 1,
-			Time:    ts,
-			Command: cmd,
-		})
+		kh.entries = append(kh.entries, entry)
 	}
 }
 
@@ -111,13 +130,6 @@ func (kh *KishHistory) All() []HistoryEntry {
 
 func printHistory(fields []string) {
 	if kishHistory == nil {
-		data, err := os.ReadFile(filepath.Join(kishDir(), "history"))
-		if err != nil {
-			return
-		}
-		for i, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
-			fmt.Fprintf(os.Stdout, " %4d  %s\n", i+1, line)
-		}
 		return
 	}
 
@@ -133,11 +145,30 @@ func printHistory(fields []string) {
 		entries = kishHistory.All()
 	}
 
-	for _, entry := range entries {
+	for _, e := range entries {
 		ts := ""
-		if !entry.Time.IsZero() {
-			ts = entry.Time.Format("2006-01-02 15:04")
+		if !e.Time.IsZero() {
+			ts = e.Time.Format("2006-01-02 15:04")
 		}
-		fmt.Fprintf(os.Stdout, " %4d  %s  %s\n", entry.Num, ts, entry.Command)
+		tty := ""
+		if e.TTY != "" {
+			tty = fmt.Sprintf(" [%s:%d]", e.TTY, e.PID)
+		}
+		fmt.Fprintf(os.Stdout, " %4d  %s%s  %s\n", e.Num, ts, tty, e.Command)
 	}
+}
+
+// ttyName returns the terminal device name (e.g. "pts/3")
+func ttyName() string {
+	// Try /proc/self/fd/0 (Linux)
+	link, err := os.Readlink("/proc/self/fd/0")
+	if err == nil && strings.HasPrefix(link, "/dev/") {
+		return strings.TrimPrefix(link, "/dev/")
+	}
+	// Fallback: ttyname via syscall
+	var stat syscall.Stat_t
+	if err := syscall.Fstat(0, &stat); err == nil {
+		return fmt.Sprintf("tty:%d", stat.Rdev)
+	}
+	return ""
 }

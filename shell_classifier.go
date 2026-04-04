@@ -10,18 +10,21 @@ import (
 var kiPrefix = "ki"
 
 func isKIRequest(input string) bool {
-	if strings.HasPrefix(input, kiPrefix+" ") || input == kiPrefix {
+	if strings.HasPrefix(input, kiPrefix+" ") || strings.HasPrefix(input, kiPrefix+": ") || strings.HasPrefix(input, kiPrefix+":") {
 		return true
 	}
-	if strings.HasPrefix(input, "? ") || input == "?" {
+	if input == kiPrefix {
 		return true
 	}
-	return false
+	return strings.HasPrefix(input, "? ") || input == "?"
 }
 
 func stripKIPrefix(input string) string {
-	if strings.HasPrefix(input, kiPrefix+" ") {
-		return strings.TrimSpace(input[len(kiPrefix)+1:])
+	for _, sep := range []string{": ", ":", " "} {
+		p := kiPrefix + sep
+		if strings.HasPrefix(input, p) {
+			return strings.TrimSpace(input[len(p):])
+		}
 	}
 	if input == kiPrefix {
 		return ""

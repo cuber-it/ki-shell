@@ -31,7 +31,7 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 		Prompt:          "\033[1;36mki>\033[0m ",
 		InterruptPrompt: "^C",
 		EOFPrompt:       "stop",
-		HistoryFile:     filepath.Join(kishDir(), "history"),
+		HistoryFile:     filepath.Join(kishDir(), "readline_history"),
 		HistoryLimit:    10000,
 	})
 	if err != nil {

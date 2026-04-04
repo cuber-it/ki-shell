@@ -18,7 +18,7 @@ func rotateAllLogs() {
 	today := time.Now().Format("2006-01-02")
 	rotateLog(filepath.Join(dir, "shell.log"), today, 30)
 	rotateLog(filepath.Join(dir, "audit.log"), today, 90)
-	trimFile(filepath.Join(dir, "history_ts"), 50000)
+	trimFile(filepath.Join(dir, "history"), 50000)
 	cleanOldGzips(dir, 90)
 }
 

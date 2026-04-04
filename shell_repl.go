@@ -43,7 +43,7 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 
 	rl, err := readline.NewFromConfig(&readline.Config{
 		Prompt:          buildPrompt(),
-		HistoryFile:     filepath.Join(kishDir(), "history"),
+		HistoryFile:     filepath.Join(kishDir(), "readline_history"),
 		HistoryLimit:    10000,
 		AutoComplete:    newCompleter(),
 		InterruptPrompt: "^C",

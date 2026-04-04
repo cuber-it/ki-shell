@@ -39,7 +39,7 @@ permissions.yaml
 *.log
 vault/
 history
-history_ts
+readline_history
 sessions/
 
 # kish-sh build artifacts

@@ -247,34 +247,35 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 				}
 				result := Confirm(action, reason, confirmLevel)
 				if result == ConfirmYes {
+					fmt.Fprintf(os.Stderr, "\033[2m===>\n%s\033[0m\n", action)
 					stdout, stderr, exitCode := ExecuteAction(ctx, action, 30*time.Second)
-					fmt.Fprintf(os.Stderr, "\033[2m→ exit %d\033[0m\n", exitCode)
+					fmt.Fprintf(os.Stderr, "\033[2m<===\n%s\033[0m", stdout)
 					actionResults.WriteString(fmt.Sprintf("$ %s\nexit: %d\nstdout:\n%sstderr:\n%s\n", action, exitCode, stdout, stderr))
 				} else {
 					actionResults.WriteString(fmt.Sprintf("ABGELEHNT: %s (User hat abgelehnt)\n", action))
 				}
 
 			case ActionAutoRead:
-				if verboseLevel == 0 {
-					fmt.Fprintf(os.Stderr, "\033[2m→ %s\033[0m\n", action)
-				}
+				fmt.Fprintf(os.Stderr, "\033[2m===>\n%s\033[0m\n", action)
 				stdout, stderr, exitCode := ExecuteAction(ctx, action, 30*time.Second)
+				fmt.Fprintf(os.Stderr, "\033[2m<===\n%s\033[0m", stdout)
+				if stderr != "" {
+					fmt.Fprintf(os.Stderr, "\033[31m%s\033[0m", stderr)
+				}
 				vActionResult(action, exitCode, stdout, stderr)
 				actionResults.WriteString(fmt.Sprintf("$ %s\nexit: %d\nstdout:\n%sstderr:\n%s\n", action, exitCode, stdout, stderr))
 
 			case ActionAutoWrite:
-				if verboseLevel == 0 {
-					fmt.Fprintf(os.Stderr, "\033[1;33m→ %s\033[0m\n", action)
-				}
+				fmt.Fprintf(os.Stderr, "\033[1;33m===>\n%s\033[0m\n", action)
 				stdout, stderr, exitCode := ExecuteAction(ctx, action, 30*time.Second)
+				fmt.Fprintf(os.Stderr, "\033[1;33m<===\n%s\033[0m", stdout)
 				vActionResult(action, exitCode, stdout, stderr)
 				actionResults.WriteString(fmt.Sprintf("$ %s\nexit: %d\nstdout:\n%sstderr:\n%s\n", action, exitCode, stdout, stderr))
 
 			case ActionAutoExec:
-				if verboseLevel == 0 {
-					fmt.Fprintf(os.Stderr, "\033[1;35m→ %s\033[0m\n", action)
-				}
+				fmt.Fprintf(os.Stderr, "\033[1;35m===>\n%s\033[0m\n", action)
 				stdout, stderr, exitCode := ExecuteAction(ctx, action, 30*time.Second)
+				fmt.Fprintf(os.Stderr, "\033[1;35m<===\n%s\033[0m", stdout)
 				actionResults.WriteString(fmt.Sprintf("$ %s\nexit: %d\nstdout:\n%sstderr:\n%s\n", action, exitCode, stdout, stderr))
 			}
 		}

@@ -52,7 +52,7 @@ func vAction(action string, level ActionLevel, step, maxSteps int) {
 		color = "\033[1;31m"
 		levelName = "BLOCKED"
 	}
-	fmt.Fprintf(os.Stderr, "%s[step %d/%d] [%s] → %s\033[0m\n", color, step, maxSteps, levelName, action)
+	fmt.Fprintf(os.Stderr, "%s[step %d/%d] [%s]\n===> %s\033[0m\n", color, step, maxSteps, levelName, action)
 }
 
 func vSystemPrompt(prompt string) {

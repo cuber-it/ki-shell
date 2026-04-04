@@ -411,7 +411,7 @@ func executeWithPermissions(command string) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "\033[2m→ %s\033[0m\n", command)
+	fmt.Fprintf(os.Stderr, "\033[2m===>\n%s\033[0m\n", command)
 	runner, err := interp.New(interp.StdIO(os.Stdin, os.Stdout, os.Stderr))
 	if err != nil {
 		return

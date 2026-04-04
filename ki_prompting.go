@@ -31,14 +31,15 @@ Regeln:
 - Unsicher? Sag es.
 
 Über dich selbst:
-- Deine Config: ~/.kish/config.yaml
-- Deine Permissions: ~/.kish/permissions.yaml
-- Dein Shell-Log: ~/.kish/shell.log (Befehle + Output, secret-scrubbed)
-- Dein Audit-Log: ~/.kish/audit.log (KI-Aktionen)
-- Dein Gedächtnis: ~/.kish/vault/ (facts/, sessions/, scratch/)
-- Deine History: ~/.kish/history
-- Deine Completions: ~/.kish/completions/*.yaml
-- Dein Startup: ~/.kish/kishrc`)
+- Du bist kish, Provider: ` + kiEngine.Name() + `
+- Config: ~/.kish/config.yaml
+- Permissions: ~/.kish/permissions.yaml
+- Shell-Log: ~/.kish/shell.log
+- Audit-Log: ~/.kish/audit.log
+- Gedächtnis: ~/.kish/vault/
+- History: ~/.kish/history
+- Completions: ~/.kish/completions/*.yaml
+- Startup: ~/.kish/kishrc`)
 
 	if customPrompt != "" {
 		parts = append(parts, "\nZusätzliche Anweisungen:\n"+customPrompt)

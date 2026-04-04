@@ -123,7 +123,7 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 			}
 			conversation = append(conversation, ConversationTurn{
 				UserInput: cmdResult.String(),
-				Response:  "(Befehl ausgeführt, Output oben sichtbar)",
+				Response:  "(command executed, output shown above)",
 			})
 		} else {
 			rawCtx := shellContext.Collect()

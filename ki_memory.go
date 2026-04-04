@@ -188,7 +188,7 @@ func (m *Memory) listCategory(category string) []MemoryEntry {
 
 func (m *Memory) SaveSessionSummary(summary string, cwd string, commands int) error {
 	key := fmt.Sprintf("session_%s", time.Now().Format("2006-01-02_15-04"))
-	value := fmt.Sprintf("Verzeichnis: %s\nBefehle: %d\n%s", cwd, commands, summary)
+	value := fmt.Sprintf("cwd: %s\ncommands: %d\n%s", cwd, commands, summary)
 	return m.Store(key, value, "session", []string{"session"})
 }
 

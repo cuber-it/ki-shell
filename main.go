@@ -62,7 +62,7 @@ Usage:
   kish                     interactive shell
   kish script.sh [args]    run script
   kish -c 'command'        run command
-  kish -c '@ki query'      run KI query non-interactively
+  kish -c 'ki query'       run KI query non-interactively
 
 Flags:
   -c string    command to execute

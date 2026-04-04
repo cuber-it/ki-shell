@@ -62,6 +62,29 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			fmt.Fprintf(hc.Stderr, "Forgotten: %s\n", key)
 			return nil
 
+		case "showlogs", "ki:showlogs":
+			n := 20
+			if len(args) > 1 {
+				fmt.Sscanf(args[1], "%d", &n)
+			}
+			fmt.Fprintln(hc.Stdout, "=== Shell Log ===")
+			if shellLog != nil {
+				for _, entry := range shellLog.Recent(n) {
+					fmt.Fprintln(hc.Stdout, entry)
+					fmt.Fprintln(hc.Stdout)
+				}
+			}
+			fmt.Fprintln(hc.Stdout, "=== Audit Log ===")
+			if audit != nil {
+				audit.PrintRecent(n)
+			}
+			fmt.Fprintln(hc.Stdout, "=== Conversation ===")
+			for _, turn := range kiConversation.Recent() {
+				fmt.Fprintf(hc.Stdout, "User: %s\n", truncateLines(turn.UserInput, 3))
+				fmt.Fprintf(hc.Stdout, "KI:   %s\n\n", truncateLines(turn.Response, 5))
+			}
+			return nil
+
 		case "ki:clear":
 			kiConversation.Clear()
 			fmt.Fprintln(hc.Stderr, "Conversation cleared.")

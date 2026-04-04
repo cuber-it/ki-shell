@@ -92,6 +92,7 @@ KI Commands (interactive):
   vergiss <key>      forget a fact
   history [n]        show command history with timestamps
   showlogs [filter] [n]  show logs (shell|audit|conversation)
+  showmemory [filter]    show vault (facts|sessions|scratch)
 
 More: https://github.com/cuber-it/ki-shell
 `, version)

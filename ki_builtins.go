@@ -62,6 +62,48 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			fmt.Fprintf(hc.Stderr, "Forgotten: %s\n", key)
 			return nil
 
+		case "showmemory", "ki:memory":
+			filter := ""
+			if len(args) > 1 {
+				filter = args[1]
+			}
+			if filter == "" || filter == "facts" {
+				facts := kiMemory.AllFacts()
+				if len(facts) > 0 {
+					fmt.Fprintln(hc.Stdout, "=== Facts ===")
+					for _, f := range facts {
+						tags := ""
+						if len(f.Tags) > 0 {
+							tags = " #" + strings.Join(f.Tags, " #")
+						}
+						fmt.Fprintf(hc.Stdout, "  %-20s %s%s\n", f.Key, f.Value, tags)
+					}
+				}
+			}
+			if filter == "" || filter == "sessions" {
+				sessions := kiMemory.RecentSessions(10)
+				if len(sessions) > 0 {
+					fmt.Fprintln(hc.Stdout, "=== Sessions ===")
+					for _, s := range sessions {
+						fmt.Fprintf(hc.Stdout, "  %s: %s\n", s.Created.Format("2006-01-02 15:04"), s.Value)
+					}
+				}
+			}
+			if filter == "" || filter == "scratch" {
+				scratch := kiMemory.listCategory("scratch")
+				if len(scratch) > 0 {
+					fmt.Fprintln(hc.Stdout, "=== Scratch ===")
+					for _, s := range scratch {
+						fmt.Fprintf(hc.Stdout, "  %-20s %s (expires %s)\n", s.Key, s.Value, s.ExpiresAt.Format("2006-01-02"))
+					}
+				}
+			}
+			if filter == "" {
+				total := len(kiMemory.AllFacts()) + len(kiMemory.RecentSessions(100)) + len(kiMemory.listCategory("scratch"))
+				fmt.Fprintf(hc.Stdout, "\n%d entries in ~/.kish/vault/\n", total)
+			}
+			return nil
+
 		case "showlogs", "ki:showlogs":
 			filter := ""
 			n := 20

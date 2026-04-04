@@ -3,14 +3,32 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
 )
+
+// pageOutput runs content through $PAGER (or less, or cat as fallback)
+func pageOutput(content string) {
+	pager := os.Getenv("PAGER")
+	if pager == "" {
+		pager = "less"
+	}
+	cmd := exec.Command(pager)
+	cmd.Stdin = strings.NewReader(content)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprint(os.Stdout, content) // fallback: dump directly
+	}
+}
 
 // kishBuiltinsMiddleware intercepts kish-specific commands (ki, merke, erinnere, etc.)
 // before they reach the default exec handler.
@@ -67,41 +85,47 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			if len(args) > 1 {
 				filter = args[1]
 			}
+			var buf bytes.Buffer
+			w := io.Writer(&buf)
 			if filter == "" || filter == "facts" {
 				facts := kiMemory.AllFacts()
 				if len(facts) > 0 {
-					fmt.Fprintln(hc.Stdout, "=== Facts ===")
+					fmt.Fprintln(w, "=== Facts ===")
 					for _, f := range facts {
 						tags := ""
 						if len(f.Tags) > 0 {
 							tags = " #" + strings.Join(f.Tags, " #")
 						}
-						fmt.Fprintf(hc.Stdout, "  %-20s %s%s\n", f.Key, f.Value, tags)
+						fmt.Fprintf(w, "  %-20s %s%s\n", f.Key, f.Value, tags)
 					}
+					fmt.Fprintln(w)
 				}
 			}
 			if filter == "" || filter == "sessions" {
 				sessions := kiMemory.RecentSessions(10)
 				if len(sessions) > 0 {
-					fmt.Fprintln(hc.Stdout, "=== Sessions ===")
+					fmt.Fprintln(w, "=== Sessions ===")
 					for _, s := range sessions {
-						fmt.Fprintf(hc.Stdout, "  %s: %s\n", s.Created.Format("2006-01-02 15:04"), s.Value)
+						fmt.Fprintf(w, "  %s  %s\n", s.Created.Format("2006-01-02 15:04"), s.Value)
 					}
+					fmt.Fprintln(w)
 				}
 			}
 			if filter == "" || filter == "scratch" {
 				scratch := kiMemory.listCategory("scratch")
 				if len(scratch) > 0 {
-					fmt.Fprintln(hc.Stdout, "=== Scratch ===")
+					fmt.Fprintln(w, "=== Scratch ===")
 					for _, s := range scratch {
-						fmt.Fprintf(hc.Stdout, "  %-20s %s (expires %s)\n", s.Key, s.Value, s.ExpiresAt.Format("2006-01-02"))
+						fmt.Fprintf(w, "  %-20s %s (expires %s)\n", s.Key, s.Value, s.ExpiresAt.Format("2006-01-02"))
 					}
+					fmt.Fprintln(w)
 				}
 			}
 			if filter == "" {
 				total := len(kiMemory.AllFacts()) + len(kiMemory.RecentSessions(100)) + len(kiMemory.listCategory("scratch"))
-				fmt.Fprintf(hc.Stdout, "\n%d entries in ~/.kish/vault/\n", total)
+				fmt.Fprintf(w, "%d entries in ~/.kish/vault/\n", total)
 			}
+			pageOutput(buf.String())
 			return nil
 
 		case "showlogs", "ki:showlogs":
@@ -115,28 +139,46 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 					fmt.Sscanf(arg, "%d", &n)
 				}
 			}
+			var buf bytes.Buffer
+			w := io.Writer(&buf)
 			if filter == "" || filter == "shell" {
-				fmt.Fprintln(hc.Stdout, "=== Shell Log ===")
+				fmt.Fprintln(w, "=== Shell Log ===")
 				if shellLog != nil {
 					for _, entry := range shellLog.Recent(n) {
-						fmt.Fprintln(hc.Stdout, entry)
-						fmt.Fprintln(hc.Stdout)
+						fmt.Fprintln(w, entry)
+						fmt.Fprintln(w)
 					}
 				}
 			}
 			if filter == "" || filter == "audit" {
-				fmt.Fprintln(hc.Stdout, "=== Audit Log ===")
+				fmt.Fprintln(w, "=== Audit Log ===")
 				if audit != nil {
-					audit.PrintRecent(n)
+					data, _ := os.ReadFile(audit.filePath)
+					lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+					start := 0
+					if len(lines) > n {
+						start = len(lines) - n
+					}
+					for _, line := range lines[start:] {
+						if line != "" {
+							fmt.Fprintln(w, line)
+						}
+					}
 				}
+				fmt.Fprintln(w)
 			}
 			if filter == "" || filter == "conversation" {
-				fmt.Fprintln(hc.Stdout, "=== Conversation ===")
+				fmt.Fprintln(w, "=== Conversation ===")
 				for _, turn := range kiConversation.Recent() {
-					fmt.Fprintf(hc.Stdout, "User: %s\n", truncateLines(turn.UserInput, 3))
-					fmt.Fprintf(hc.Stdout, "KI:   %s\n\n", truncateLines(turn.Response, 5))
+					fmt.Fprintf(w, "  User: %s\n", truncateLines(turn.UserInput, 3))
+					fmt.Fprintf(w, "  KI:   %s\n\n", truncateLines(turn.Response, 5))
 				}
 			}
+			pageOutput(buf.String())
+			return nil
+
+		case "ki:disk":
+			fmt.Fprintln(hc.Stdout, DiskUsage())
 			return nil
 
 		case "ki:clear":

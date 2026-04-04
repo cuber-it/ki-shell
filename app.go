@@ -61,6 +61,7 @@ func runAll() error {
 	initJobControl()
 	shellLog = newShellLog()
 	defer shellLog.Close()
+	rotateAllLogs()
 	initHistory()
 	defer closeHistory()
 	if len(cfg.MCP) > 0 {

@@ -195,6 +195,12 @@ func handleBuiltin(line string) bool {
 	case "ki:clear":
 		kiConversation.Clear()
 		fmt.Fprintln(os.Stderr, "Conversation cleared.")
+	case "ki:disk":
+		fmt.Fprintln(os.Stdout, DiskUsage())
+	case "ki:status", "ki:costs", "ki:prompt", "ki:variant", "ki:audit", "ki:log",
+		"ki:search", "ki:mcp",
+		"remember", "recall", "forget", "merke", "erinnere", "vergiss":
+		dispatchBuiltin(fields)
 	case "jobs":
 		jobTable.PrintJobs()
 	case "fg":
@@ -234,6 +240,94 @@ func resolveJobCmd(fields []string, fn func(int) error) {
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "kish: %s: no current job\n", fields[0])
+	}
+}
+
+// dispatchBuiltin handles ki: commands that the shell parser rejects.
+func dispatchBuiltin(fields []string) {
+	args := fields
+	switch args[0] {
+	case "remember", "merke":
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "Usage: remember <key> <value...>")
+			return
+		}
+		if err := kiMemory.Store(args[1], strings.Join(args[2:], " "), "fact", nil); err != nil {
+			fmt.Fprintf(os.Stderr, "kish: %s\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "Remembered: %s\n", args[1])
+		}
+	case "recall", "erinnere":
+		if len(args) < 2 {
+			return
+		}
+		for _, e := range kiMemory.Search(strings.Join(args[1:], " ")) {
+			fmt.Fprintf(os.Stdout, "%s [%s]: %s\n", e.Key, e.Category, e.Value)
+		}
+	case "forget", "vergiss":
+		if len(args) < 2 {
+			return
+		}
+		for _, cat := range []string{"fact", "session", "scratch"} {
+			os.Remove(filepath.Join(kishDir(), "vault", cat, sanitizeFilename(args[1])+".yaml"))
+		}
+		fmt.Fprintf(os.Stderr, "Forgotten: %s\n", args[1])
+	case "ki:status":
+		ensureKIEngine()
+		fmt.Fprintf(os.Stdout, "Engine: %s\nAvailable: %v\nMemories: %d\nConversation: %d turns\n",
+			kiEngine.Name(), kiEngine.Available(), len(kiMemory.AllFacts()), len(kiConversation.Recent()))
+	case "ki:costs":
+		ensureKIEngine()
+		if pe, ok := kiEngine.(*ProviderEngine); ok {
+			today := pe.TodayStats()
+			reqs, tokIn, tokOut, cost := pe.TotalStats()
+			fmt.Fprintf(os.Stdout, "Today: %d req, %d/%d tok, $%.4f\nTotal: %d req, %d/%d tok, $%.4f\n",
+				today.Requests, today.InputTokens, today.OutputTokens, today.Cost,
+				reqs, tokIn, tokOut, cost)
+		}
+	case "ki:prompt":
+		ensureKIEngine()
+		fmt.Fprintln(os.Stdout, buildSystemPrompt(shellContext.Collect(), kiMemory, ""))
+	case "ki:variant":
+		if len(args) > 1 {
+			SwitchVariant(args[1])
+		} else {
+			fmt.Fprintln(os.Stdout, ListVariants())
+		}
+	case "ki:audit":
+		n := 20
+		if len(args) > 1 {
+			fmt.Sscanf(args[1], "%d", &n)
+		}
+		if audit != nil {
+			audit.PrintRecent(n)
+		}
+	case "ki:log":
+		n := 20
+		if len(args) > 1 {
+			fmt.Sscanf(args[1], "%d", &n)
+		}
+		if shellLog != nil {
+			for _, e := range shellLog.Recent(n) {
+				fmt.Fprintln(os.Stdout, e)
+			}
+		}
+	case "ki:search":
+		if len(args) > 1 && shellLog != nil {
+			for _, e := range shellLog.Search(strings.Join(args[1:], " "), 10) {
+				fmt.Fprintln(os.Stdout, e)
+			}
+		}
+	case "ki:mcp":
+		if mcpClient != nil {
+			for _, t := range mcpClient.ListTools() {
+				fmt.Fprintln(os.Stdout, t)
+			}
+		}
+	case "ki:memory", "showmemory":
+		// Already in handleBuiltin switch, won't reach here
+	case "showlogs", "ki:showlogs":
+		// Already in handleBuiltin switch, won't reach here
 	}
 }
 

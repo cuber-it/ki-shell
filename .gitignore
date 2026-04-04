@@ -45,3 +45,4 @@ sessions/
 # kish-sh build artifacts
 kish-sh/cmd/shfmt/shfmt
 kish-sh/cmd/gosh/gosh
+ki-shell

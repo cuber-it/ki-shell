@@ -338,7 +338,13 @@ func handleKI(ctx context.Context, input string) {
 		return
 	}
 
-	filteredCtx := kiPermissions.FilterContext(shellContext.Collect())
+	rawCtx := shellContext.Collect()
+	filteredCtx := kiPermissions.FilterContext(rawCtx)
+
+	// Pre-think: decompose complex tasks before sending to KI
+	if shouldPreThink(input) && kiPermissions.AgentMode {
+		input = preThink(ctx, input, rawCtx)
+	}
 
 	if kiPermissions.RequireConfirmation {
 		msg := fmt.Sprintf("KI-Query senden? (cwd=%s, %d cmds, %d env vars)",

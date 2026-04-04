@@ -163,12 +163,12 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 						continue
 					}
 					if level == ActionAutoRead {
-						fmt.Fprintf(os.Stderr, "\033[2m===>\n%s\033[0m\n", action)
+						fmt.Fprintf(os.Stderr, "\033[2m$ %s\033[0m\n", action)
 						stdout, stderr, exitCode := ExecuteAction(ctx, action, 30*1e9)
 						if stdout != "" {
-							fmt.Fprintf(os.Stderr, "\033[2m<===\n")
 							fmt.Fprint(os.Stdout, stdout)
 						}
+						logAction(action, stdout, stderr, exitCode)
 						conversation = append(conversation, ConversationTurn{
 							UserInput: fmt.Sprintf("(auto-executed: %s → exit %d)", action, exitCode),
 							Response:  stdout + stderr,

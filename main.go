@@ -91,6 +91,7 @@ KI Commands (interactive):
   erinnere <query>   recall from memory
   vergiss <key>      forget a fact
   history [n]        show command history with timestamps
+  showlogs [filter] [n]  show logs (shell|audit|conversation)
 
 More: https://github.com/cuber-it/ki-shell
 `, version)

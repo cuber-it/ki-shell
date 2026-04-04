@@ -61,14 +61,17 @@ Show last \fIn\fR audit log entries (default 20).
 .B ki:clear
 Reset conversation history.
 .TP
-.B merke \fIkey\fR \fIvalue\fR
-Store a fact in persistent memory.
+.B showlogs [\fIfilter\fR] [\fIn\fR]
+Show logs. Without filter: all categories. Filter: \fBshell\fR (commands + output), \fBaudit\fR (AI actions), \fBconversation\fR (AI dialog). \fIn\fR limits entries per category (default 20).
 .TP
-.B erinnere \fIquery\fR
-Search persistent memory.
+.B remember \fIkey\fR \fIvalue\fR
+Store a fact in persistent memory. Also: \fBmerke\fR.
 .TP
-.B vergiss \fIkey\fR
-Delete a fact from memory.
+.B recall \fIquery\fR
+Search persistent memory. Also: \fBerinnere\fR.
+.TP
+.B forget \fIkey\fR
+Delete a fact from memory. Also: \fBvergiss\fR.
 .SH SECURITY
 kish uses a layered permission system for AI operations:
 .PP

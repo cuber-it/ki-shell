@@ -247,7 +247,6 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 				}
 				result := Confirm(action, reason, confirmLevel)
 				if result == ConfirmYes {
-					fmt.Fprintf(os.Stderr, "\033[2m$ %s\033[0m\n", action)
 					stdout, stderr, exitCode := ExecuteAction(ctx, action, 30*time.Second)
 					if stdout != "" {
 						fmt.Fprint(os.Stdout, stdout)

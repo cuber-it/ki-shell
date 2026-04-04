@@ -429,33 +429,32 @@ func executeWithPermissions(command string) {
 }
 
 func expandBang(line string) string {
-	data, err := os.ReadFile(filepath.Join(kishDir(), "history"))
-	if err != nil {
+	if kishHistory == nil {
 		return ""
 	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) == 0 {
+	entries := kishHistory.All()
+	if len(entries) == 0 {
 		return ""
 	}
 
 	bang := line[1:]
 
 	if bang == "!" {
-		return lines[len(lines)-1]
+		return entries[len(entries)-1].Command
 	}
 	var n int
-	if cnt, _ := fmt.Sscanf(bang, "%d", &n); cnt == 1 && n > 0 && n <= len(lines) {
-		return lines[n-1]
+	if cnt, _ := fmt.Sscanf(bang, "%d", &n); cnt == 1 && n > 0 && n <= len(entries) {
+		return entries[n-1].Command
 	}
 	if strings.HasPrefix(bang, "-") {
 		var neg int
-		if cnt, _ := fmt.Sscanf(bang[1:], "%d", &neg); cnt == 1 && neg > 0 && neg <= len(lines) {
-			return lines[len(lines)-neg]
+		if cnt, _ := fmt.Sscanf(bang[1:], "%d", &neg); cnt == 1 && neg > 0 && neg <= len(entries) {
+			return entries[len(entries)-neg].Command
 		}
 	}
-	for i := len(lines) - 1; i >= 0; i-- {
-		if strings.HasPrefix(lines[i], bang) {
-			return lines[i]
+	for i := len(entries) - 1; i >= 0; i-- {
+		if strings.HasPrefix(entries[i].Command, bang) {
+			return entries[i].Command
 		}
 	}
 	return ""

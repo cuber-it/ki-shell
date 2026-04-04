@@ -46,3 +46,4 @@ sessions/
 kish-sh/cmd/shfmt/shfmt
 kish-sh/cmd/gosh/gosh
 ki-shell
+repos.txt

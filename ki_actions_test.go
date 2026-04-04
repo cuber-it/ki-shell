@@ -17,8 +17,8 @@ func TestExtractActions(t *testing.T) {
 		{"```action\ndocker ps\n```", []string{"docker ps"}},
 		// sh block
 		{"```sh\necho hello\n```", []string{"echo hello"}},
-		// multiple commands in one block
-		{"```bash\nls\npwd\n```", []string{"ls", "pwd"}},
+		// multiple commands in one block → kept as single script
+		{"```bash\nls\npwd\n```", []string{"ls\npwd"}},
 		// no blocks
 		{"just text no code", nil},
 		// comments ignored

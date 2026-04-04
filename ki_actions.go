@@ -342,6 +342,8 @@ REGELN:
 - Führe jeden Befehl NUR EINMAL aus. Keine Duplikate.
 - NUR lesen, NICHT schreiben (außer der User bittet explizit darum)
 - Kurze, gezielte Befehle — maximal 3 pro Antwort
+- Mehrzeilige Scripts in EINEN Code-Block (nicht aufteilen!)
+- stderr immer unterdrücken: 2>/dev/null
 - Wenn du genug Informationen hast: antworte DIREKT ohne Code-Block
 - Antworte MENSCHLICH, nicht technisch. "Du bist ucuber" statt "Exit-Code 0, stdout: ucuber"`
 
@@ -373,10 +375,22 @@ func extractActions(text string) []string {
 		}
 		action := strings.TrimSpace(remaining[start : start+end])
 		if action != "" {
-			for _, line := range strings.Split(action, "\n") {
-				line = strings.TrimSpace(line)
-				if line != "" && !strings.HasPrefix(line, "#") {
-					actions = append(actions, line)
+			// Multi-line scripts stay as one action (executed via sh -c)
+			// Single-line commands are added individually
+			lines := strings.Split(action, "\n")
+			nonEmpty := 0
+			for _, l := range lines {
+				if l = strings.TrimSpace(l); l != "" && !strings.HasPrefix(l, "#") {
+					nonEmpty++
+				}
+			}
+			if nonEmpty > 1 {
+				actions = append(actions, action) // keep as multi-line script
+			} else {
+				for _, l := range lines {
+					if l = strings.TrimSpace(l); l != "" && !strings.HasPrefix(l, "#") {
+						actions = append(actions, l)
+					}
 				}
 			}
 		}

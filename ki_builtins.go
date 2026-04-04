@@ -63,25 +63,37 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			return nil
 
 		case "showlogs", "ki:showlogs":
+			filter := ""
 			n := 20
-			if len(args) > 1 {
-				fmt.Sscanf(args[1], "%d", &n)
-			}
-			fmt.Fprintln(hc.Stdout, "=== Shell Log ===")
-			if shellLog != nil {
-				for _, entry := range shellLog.Recent(n) {
-					fmt.Fprintln(hc.Stdout, entry)
-					fmt.Fprintln(hc.Stdout)
+			for _, arg := range args[1:] {
+				switch arg {
+				case "shell", "audit", "conversation":
+					filter = arg
+				default:
+					fmt.Sscanf(arg, "%d", &n)
 				}
 			}
-			fmt.Fprintln(hc.Stdout, "=== Audit Log ===")
-			if audit != nil {
-				audit.PrintRecent(n)
+			if filter == "" || filter == "shell" {
+				fmt.Fprintln(hc.Stdout, "=== Shell Log ===")
+				if shellLog != nil {
+					for _, entry := range shellLog.Recent(n) {
+						fmt.Fprintln(hc.Stdout, entry)
+						fmt.Fprintln(hc.Stdout)
+					}
+				}
 			}
-			fmt.Fprintln(hc.Stdout, "=== Conversation ===")
-			for _, turn := range kiConversation.Recent() {
-				fmt.Fprintf(hc.Stdout, "User: %s\n", truncateLines(turn.UserInput, 3))
-				fmt.Fprintf(hc.Stdout, "KI:   %s\n\n", truncateLines(turn.Response, 5))
+			if filter == "" || filter == "audit" {
+				fmt.Fprintln(hc.Stdout, "=== Audit Log ===")
+				if audit != nil {
+					audit.PrintRecent(n)
+				}
+			}
+			if filter == "" || filter == "conversation" {
+				fmt.Fprintln(hc.Stdout, "=== Conversation ===")
+				for _, turn := range kiConversation.Recent() {
+					fmt.Fprintf(hc.Stdout, "User: %s\n", truncateLines(turn.UserInput, 3))
+					fmt.Fprintf(hc.Stdout, "KI:   %s\n\n", truncateLines(turn.Response, 5))
+				}
 			}
 			return nil
 

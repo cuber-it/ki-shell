@@ -290,26 +290,9 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 
 // logAction writes ===> / <=== with timestamps to the shell log (not to screen).
 func logAction(command, stdout, stderr string, exitCode int) {
-	if shellLog == nil {
-		return
+	if shellLog != nil {
+		shellLog.Record(command, exitCode, stdout, stderr)
 	}
-	ts := time.Now().Format("2006-01-02 15:04:05")
-	var entry strings.Builder
-	entry.WriteString(fmt.Sprintf("== %s ==>\n%s\n", ts, command))
-	if stdout != "" {
-		entry.WriteString(fmt.Sprintf("<== %s ==\n%s", ts, stdout))
-		if !strings.HasSuffix(stdout, "\n") {
-			entry.WriteString("\n")
-		}
-	}
-	if stderr != "" {
-		entry.WriteString(fmt.Sprintf("[stderr] %s", stderr))
-		if !strings.HasSuffix(stderr, "\n") {
-			entry.WriteString("\n")
-		}
-	}
-	entry.WriteString(fmt.Sprintf("exit: %d\n", exitCode))
-	shellLog.Record(command, exitCode, stdout, stderr)
 }
 
 func levelDecision(level ActionLevel) string {

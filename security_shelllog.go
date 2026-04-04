@@ -49,11 +49,12 @@ func (sl *ShellLog) Record(command string, exitCode int, stdout, stderr string) 
 	ts := time.Now().Format("2006-01-02 15:04:05")
 
 	var entry strings.Builder
-	entry.WriteString(fmt.Sprintf("=== %s [exit:%d] cwd:%s ===\n", ts, exitCode, cwd))
-	entry.WriteString(fmt.Sprintf("$ %s\n", command))
+	entry.WriteString(fmt.Sprintf("== %s ==> [cwd:%s]\n%s\n", ts, cwd, command))
 
 	if stdout != "" {
 		scrubbed := scrubSecrets(stdout)
+		tsOut := time.Now().Format("2006-01-02 15:04:05")
+		entry.WriteString(fmt.Sprintf("<== %s == [exit:%d]\n", tsOut, exitCode))
 		lines := strings.Split(scrubbed, "\n")
 		if len(lines) > 50 {
 			for _, line := range lines[:25] {
@@ -69,6 +70,9 @@ func (sl *ShellLog) Record(command string, exitCode int, stdout, stderr string) 
 				entry.WriteString("\n")
 			}
 		}
+	} else {
+		tsOut := time.Now().Format("2006-01-02 15:04:05")
+		entry.WriteString(fmt.Sprintf("<== %s == [exit:%d]\n", tsOut, exitCode))
 	}
 
 	if stderr != "" {
@@ -169,7 +173,10 @@ func splitLogEntries(text string) []string {
 	inEntry := false
 
 	for _, line := range strings.Split(text, "\n") {
-		if strings.HasPrefix(line, "=== ") && strings.Contains(line, "[exit:") {
+		// New format starts with "== timestamp ==>"
+		// Old format starts with "=== timestamp [exit:N] ==="
+		if (strings.HasPrefix(line, "== ") && strings.Contains(line, "==>")) ||
+			(strings.HasPrefix(line, "=== ") && strings.Contains(line, "[exit:")) {
 			if inEntry && current.Len() > 0 {
 				entries = append(entries, strings.TrimSpace(current.String()))
 			}
@@ -178,8 +185,10 @@ func splitLogEntries(text string) []string {
 			inEntry = true
 		} else if inEntry {
 			current.WriteString(line + "\n")
-			if line == "===" {
-				entries = append(entries, strings.TrimSpace(current.String()))
+			if line == "===" || line == "" {
+				if current.Len() > 10 {
+					entries = append(entries, strings.TrimSpace(current.String()))
+				}
 				current.Reset()
 				inEntry = false
 			}

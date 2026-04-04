@@ -11,8 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// kishCompleter implements readline.AutoCompleter with dynamic, context-aware completions.
-// Tool-specific completions are loaded from YAML specs in ~/.kish/completions/
 type kishCompleter struct {
 	pathCommands []string
 	pathCacheDir string

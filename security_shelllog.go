@@ -12,16 +12,6 @@ import (
 	"time"
 )
 
-// ShellLog is a persistent, human-readable log of all shell activity.
-// Secrets are scrubbed before writing.
-//
-// Format:
-//
-//	=== 2026-04-03 07:45:12 [exit:0] cwd:/home/user/project ===
-//	$ ls -la
-//	total 42
-//	drwxr-xr-x ...
-//	===
 type ShellLog struct {
 	mu       sync.Mutex
 	file     *os.File
@@ -69,7 +59,7 @@ func (sl *ShellLog) Record(command string, exitCode int, stdout, stderr string) 
 			for _, line := range lines[:25] {
 				entry.WriteString(line + "\n")
 			}
-			entry.WriteString(fmt.Sprintf("... (%d Zeilen gekürzt) ...\n", len(lines)-50))
+			entry.WriteString(fmt.Sprintf("... (%d lines truncated) ...\n", len(lines)-50))
 			for _, line := range lines[len(lines)-25:] {
 				entry.WriteString(line + "\n")
 			}

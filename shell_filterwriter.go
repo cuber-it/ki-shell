@@ -8,8 +8,7 @@ import (
 	"sync"
 )
 
-// FilterWriter wraps a writer and suppresses lines matching known patterns.
-// Used during .bashrc loading to silence mvdan/sh incompatibility warnings.
+// FilterWriter suppresses known incompatibility warnings during .bashrc loading.
 type FilterWriter struct {
 	mu       sync.Mutex
 	writer   io.Writer

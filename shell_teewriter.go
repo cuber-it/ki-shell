@@ -9,8 +9,6 @@ import (
 	"sync"
 )
 
-// TeeWriter writes to an underlying writer AND captures a copy in a buffer.
-// Used to capture stdout/stderr for the shell log while still showing output.
 type TeeWriter struct {
 	mu     sync.Mutex
 	writer io.Writer
@@ -19,8 +17,6 @@ type TeeWriter struct {
 	limit  int
 }
 
-// Fd returns the file descriptor of the underlying writer.
-// Critical for programs like vim that call isatty(fd).
 func (tw *TeeWriter) Fd() uintptr {
 	if tw.file != nil {
 		return tw.file.Fd()

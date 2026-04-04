@@ -72,7 +72,6 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 	}
 }
 
-// StubKIEngine is a placeholder when no KI provider is configured.
 type StubKIEngine struct {
 	reason string
 }

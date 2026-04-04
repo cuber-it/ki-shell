@@ -11,8 +11,7 @@ import (
 	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
 )
 
-// kiExecMiddleware intercepts the KI prefix command in pipes.
-// Allows: cat log | @ki "summarize"
+// kiExecMiddleware intercepts the KI prefix command in pipes (e.g. cat log | ki "summarize")
 func kiExecMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 	return func(ctx context.Context, args []string) error {
 		cmdName := args[0]

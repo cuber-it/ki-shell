@@ -39,7 +39,6 @@ func defaultPrompt() string {
 	return fmt.Sprintf("%s \033[1;36mkish\033[0m %s%s $ ", exitIndicator, cwd, gitPart)
 }
 
-// expandPS1 expands bash-compatible PS1 escape sequences.
 func expandPS1(ps1 string) string {
 	var result strings.Builder
 	for i := 0; i < len(ps1); i++ {

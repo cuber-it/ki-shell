@@ -99,7 +99,7 @@ func SwitchVariant(name string) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("variant '%s' nicht gefunden", name)
+		return fmt.Errorf("variant '%s' not found", name)
 	}
 
 	out, err := yaml.Marshal(&cfg)
@@ -112,7 +112,7 @@ func SwitchVariant(name string) error {
 func ListVariants() string {
 	variants := LoadPromptVariants()
 	if len(variants) == 0 {
-		return "Keine Varianten konfiguriert. Siehe ~/.kish/prompts.yaml"
+		return "No variants configured. See ~/.kish/prompts.yaml"
 	}
 	var lines []string
 	for _, v := range variants {

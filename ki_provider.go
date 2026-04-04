@@ -52,8 +52,6 @@ func (e *ProviderEngine) Name() string {
 	return fmt.Sprintf("%s/%s", e.provider.Name(), e.model)
 }
 
-// SetSystemPromptOverride temporarily overrides the system prompt.
-// Pass empty string to reset to default.
 func (e *ProviderEngine) SetSystemPromptOverride(prompt string) {
 	e.sysPromptOverride = prompt
 }
@@ -150,7 +148,6 @@ func extractCommand(text string) string {
 		return ""
 	}
 	cmd := strings.TrimSpace(text[start : start+end])
-	// Only single-line commands
 	if strings.Contains(cmd, "\n") {
 		return ""
 	}

@@ -25,8 +25,6 @@ const (
 	ConfirmEdit
 )
 
-// confirmedCommands tracks commands already confirmed in this session
-// to prevent asking the same question twice for repeated patterns.
 var (
 	confirmedMu       sync.Mutex
 	confirmedCommands = make(map[string]bool)

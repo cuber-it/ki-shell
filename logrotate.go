@@ -13,37 +13,28 @@ import (
 	"time"
 )
 
-// rotateAllLogs compresses logs older than today and removes very old ones.
-// Called once at startup.
 func rotateAllLogs() {
 	dir := kishDir()
 	today := time.Now().Format("2006-01-02")
-
-	// Rotate shell.log → shell.log.2026-04-03.gz
 	rotateLog(filepath.Join(dir, "shell.log"), today, 30)
-	// Rotate audit.log → audit.log.2026-04-03.gz
 	rotateLog(filepath.Join(dir, "audit.log"), today, 90)
-	// Rotate history_ts → keep as-is but trim to last 50k lines
 	trimFile(filepath.Join(dir, "history_ts"), 50000)
-	// Clean old compressed logs
 	cleanOldGzips(dir, 90)
 }
 
-// rotateLog moves content older than today into a dated gzip file.
 func rotateLog(path string, today string, maxDays int) {
 	info, err := os.Stat(path)
-	if err != nil || info.Size() < 1024 { // don't bother with tiny files
+	if err != nil || info.Size() < 1024 {
 		return
 	}
 
-	// If last modified before today, compress the whole file
 	if info.ModTime().Format("2006-01-02") < today {
 		gzPath := fmt.Sprintf("%s.%s.gz", path, info.ModTime().Format("2006-01-02"))
 		if fileExists(gzPath) {
-			return // already rotated
+			return
 		}
 		if compressFile(path, gzPath) {
-			os.Truncate(path, 0) // clear original
+			os.Truncate(path, 0)
 		}
 	}
 }
@@ -70,7 +61,6 @@ func compressFile(src, dst string) bool {
 	return err == nil
 }
 
-// trimFile keeps only the last N lines of a file.
 func trimFile(path string, maxLines int) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -84,7 +74,6 @@ func trimFile(path string, maxLines int) {
 	os.WriteFile(path, []byte(strings.Join(kept, "\n")), 0600)
 }
 
-// cleanOldGzips removes .gz files older than maxDays.
 func cleanOldGzips(dir string, maxDays int) {
 	cutoff := time.Now().AddDate(0, 0, -maxDays)
 	entries, err := os.ReadDir(dir)
@@ -105,7 +94,6 @@ func cleanOldGzips(dir string, maxDays int) {
 	}
 }
 
-// DiskUsage returns total size of ~/.kish/ in bytes and a formatted summary.
 func DiskUsage() string {
 	dir := kishDir()
 	var total int64

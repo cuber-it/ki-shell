@@ -80,7 +80,6 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			continue
 		}
 
-		// KI request (@ki, ki, ?)
 		if isKIRequest(line) {
 			query := stripKIPrefix(line)
 			if query == "start" || query == "continuous" || query == "chat" {
@@ -100,7 +99,6 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			continue
 		}
 
-		// Bang expansion
 		if strings.HasPrefix(line, "!") && line != "!" {
 			if expanded := expandBang(line); expanded != "" {
 				fmt.Fprintf(os.Stderr, "\033[2m%s\033[0m\n", expanded)
@@ -108,7 +106,6 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			}
 		}
 
-		// Exit
 		if line == "exit" || line == "quit" || line == "logout" {
 			saveSessionOnExit()
 			return nil
@@ -120,13 +117,11 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			return interp.ExitStatus(code)
 		}
 
-		// Builtins
 		if handleBuiltin(line) {
 			rl.SetPrompt(buildPrompt())
 			continue
 		}
 
-		// Multi-line accumulation
 		if multiLine.Len() > 0 {
 			multiLine.WriteString("\n")
 		}
@@ -145,7 +140,6 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 			continue
 		}
 
-		// Execute
 		ctx := context.Background()
 		for _, stmt := range prog.Stmts {
 			input := nodeToString(stmt)
@@ -218,7 +212,6 @@ func handleBuiltin(line string) bool {
 	return true
 }
 
-// resolveJobID extracts a job ID from "fg %2" or uses the last job.
 func resolveJobID(fields []string) int {
 	id := 0
 	if len(fields) > 1 {
@@ -243,35 +236,34 @@ func resolveJobCmd(fields []string, fn func(int) error) {
 	}
 }
 
-// dispatchBuiltin handles ki: commands that the shell parser rejects.
+// dispatchBuiltin handles ki: commands that the shell parser would reject (colon syntax).
 func dispatchBuiltin(fields []string) {
-	args := fields
-	switch args[0] {
+	switch fields[0] {
 	case "remember", "merke":
-		if len(args) < 3 {
+		if len(fields) < 3 {
 			fmt.Fprintln(os.Stderr, "Usage: remember <key> <value...>")
 			return
 		}
-		if err := kiMemory.Store(args[1], strings.Join(args[2:], " "), "fact", nil); err != nil {
+		if err := kiMemory.Store(fields[1], strings.Join(fields[2:], " "), "fact", nil); err != nil {
 			fmt.Fprintf(os.Stderr, "kish: %s\n", err)
 		} else {
-			fmt.Fprintf(os.Stderr, "Remembered: %s\n", args[1])
+			fmt.Fprintf(os.Stderr, "Remembered: %s\n", fields[1])
 		}
 	case "recall", "erinnere":
-		if len(args) < 2 {
+		if len(fields) < 2 {
 			return
 		}
-		for _, e := range kiMemory.Search(strings.Join(args[1:], " ")) {
+		for _, e := range kiMemory.Search(strings.Join(fields[1:], " ")) {
 			fmt.Fprintf(os.Stdout, "%s [%s]: %s\n", e.Key, e.Category, e.Value)
 		}
 	case "forget", "vergiss":
-		if len(args) < 2 {
+		if len(fields) < 2 {
 			return
 		}
 		for _, cat := range []string{"fact", "session", "scratch"} {
-			os.Remove(filepath.Join(kishDir(), "vault", cat, sanitizeFilename(args[1])+".yaml"))
+			os.Remove(filepath.Join(kishDir(), "vault", cat, sanitizeFilename(fields[1])+".yaml"))
 		}
-		fmt.Fprintf(os.Stderr, "Forgotten: %s\n", args[1])
+		fmt.Fprintf(os.Stderr, "Forgotten: %s\n", fields[1])
 	case "ki:status":
 		ensureKIEngine()
 		fmt.Fprintf(os.Stdout, "Engine: %s\nAvailable: %v\nMemories: %d\nConversation: %d turns\n",
@@ -289,23 +281,23 @@ func dispatchBuiltin(fields []string) {
 		ensureKIEngine()
 		fmt.Fprintln(os.Stdout, buildSystemPrompt(shellContext.Collect(), kiMemory, ""))
 	case "ki:variant":
-		if len(args) > 1 {
-			SwitchVariant(args[1])
+		if len(fields) > 1 {
+			SwitchVariant(fields[1])
 		} else {
 			fmt.Fprintln(os.Stdout, ListVariants())
 		}
 	case "ki:audit":
 		n := 20
-		if len(args) > 1 {
-			fmt.Sscanf(args[1], "%d", &n)
+		if len(fields) > 1 {
+			fmt.Sscanf(fields[1], "%d", &n)
 		}
 		if audit != nil {
 			audit.PrintRecent(n)
 		}
 	case "ki:log":
 		n := 20
-		if len(args) > 1 {
-			fmt.Sscanf(args[1], "%d", &n)
+		if len(fields) > 1 {
+			fmt.Sscanf(fields[1], "%d", &n)
 		}
 		if shellLog != nil {
 			for _, e := range shellLog.Recent(n) {
@@ -313,8 +305,8 @@ func dispatchBuiltin(fields []string) {
 			}
 		}
 	case "ki:search":
-		if len(args) > 1 && shellLog != nil {
-			for _, e := range shellLog.Search(strings.Join(args[1:], " "), 10) {
+		if len(fields) > 1 && shellLog != nil {
+			for _, e := range shellLog.Search(strings.Join(fields[1:], " "), 10) {
 				fmt.Fprintln(os.Stdout, e)
 			}
 		}
@@ -324,10 +316,6 @@ func dispatchBuiltin(fields []string) {
 				fmt.Fprintln(os.Stdout, t)
 			}
 		}
-	case "ki:memory", "showmemory":
-		// Already in handleBuiltin switch, won't reach here
-	case "showlogs", "ki:showlogs":
-		// Already in handleBuiltin switch, won't reach here
 	}
 }
 

@@ -52,7 +52,6 @@ func closeHistory() {
 	}
 }
 
-// Add writes a command to history. Synced immediately — kill-safe.
 func (kh *KishHistory) Add(command string) {
 	if kh == nil || command == "" {
 		return
@@ -69,9 +68,8 @@ func (kh *KishHistory) Add(command string) {
 	}
 	kh.entries = append(kh.entries, entry)
 
-	// Format: timestamp\ttty\tpid\tcommand
 	fmt.Fprintf(kh.file, "%d\t%s\t%d\t%s\n", entry.Time.Unix(), kh.tty, kh.pid, command)
-	kh.file.Sync() // flush to disk immediately — survives kill
+	kh.file.Sync()
 }
 
 func (kh *KishHistory) load() {
@@ -158,14 +156,11 @@ func printHistory(fields []string) {
 	}
 }
 
-// ttyName returns the terminal device name (e.g. "pts/3")
 func ttyName() string {
-	// Try /proc/self/fd/0 (Linux)
 	link, err := os.Readlink("/proc/self/fd/0")
 	if err == nil && strings.HasPrefix(link, "/dev/") {
 		return strings.TrimPrefix(link, "/dev/")
 	}
-	// Fallback: ttyname via syscall
 	var stat syscall.Stat_t
 	if err := syscall.Fstat(0, &stat); err == nil {
 		return fmt.Sprintf("tty:%d", stat.Rdev)

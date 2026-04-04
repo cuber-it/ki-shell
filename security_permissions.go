@@ -64,14 +64,12 @@ func DefaultPermissions() Permissions {
 	}
 }
 
-// SelfModifyPaths: KI can NEVER modify these (only hardcoded block).
 var SelfModifyPaths = []string{
 	"~/.kish/config.yaml",
 	"~/.kish/permissions.yaml",
 	"~/.kish/kishrc",
 }
 
-// ProtectedPaths: KI CAN modify, but needs destructive-level confirmation.
 var ProtectedPaths = []string{
 	"~/.kish/vault/",
 	"/etc/shells", "/etc/passwd", "/etc/shadow", "/etc/sudoers",
@@ -91,35 +89,30 @@ func (p *Permissions) CheckCommand(command string) (bool, bool, string) {
 		firstWord = strings.ToLower(fields[0])
 	}
 
-	// Self-modification block (cannot be overridden)
 	if !readOnlyCmds[firstWord] {
 		if path, ok := commandTouchesPath(command, SelfModifyPaths); ok {
 			return false, false, fmt.Sprintf("AI cannot modify its own config: %s", path)
 		}
 	}
 
-	// User-configurable blocks
 	for _, blocked := range p.BlockedCommands {
 		if strings.Contains(cmdLower, strings.ToLower(blocked)) {
 			return false, false, fmt.Sprintf("Blocked: '%s'", blocked)
 		}
 	}
 
-	// Destructive patterns
 	for _, pattern := range p.DestructivePatterns {
 		if strings.Contains(cmdLower, strings.ToLower(pattern)) {
 			return true, true, fmt.Sprintf("Destructive: '%s'", pattern)
 		}
 	}
 
-	// Protected paths
 	if !readOnlyCmds[firstWord] {
 		if path, ok := commandTouchesPath(command, ProtectedPaths); ok {
 			return true, true, fmt.Sprintf("Protected file: %s", path)
 		}
 	}
 
-	// Elevated operations
 	for _, pattern := range []string{
 		"sudo", "su ", "passwd", "visudo",
 		"chmod +s", "chmod u+s", "chmod g+s", "crontab",
@@ -130,7 +123,6 @@ func (p *Permissions) CheckCommand(command string) (bool, bool, string) {
 		}
 	}
 
-	// Command substitution / network pipes
 	if !readOnlyCmds[firstWord] {
 		if strings.Contains(command, "$(") || strings.Contains(command, "`") {
 			return true, true, "Command substitution"
@@ -142,7 +134,6 @@ func (p *Permissions) CheckCommand(command string) (bool, bool, string) {
 		}
 	}
 
-	// Auto-execute whitelist
 	if p.AutoExecute {
 		if len(p.AllowedCommands) == 0 {
 			return true, true, ""
@@ -189,7 +180,6 @@ func (p *Permissions) FilterContext(ctx ShellContext) ShellContext {
 	return filtered
 }
 
-// commandTouchesPath checks if any argument resolves to one of the given paths.
 func commandTouchesPath(command string, paths []string) (string, bool) {
 	resolved := resolvePaths(paths)
 	for _, arg := range strings.Fields(command)[1:] {

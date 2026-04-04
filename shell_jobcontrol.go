@@ -33,8 +33,6 @@ func initJobControl() {
 	}()
 }
 
-// jobControlMiddleware wraps the exec handler for job control:
-// process groups, terminal control, SIGTSTP detection, foreground PID tracking.
 func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 	return func(ctx context.Context, args []string) error {
 		hc := interp.HandlerCtx(ctx)
@@ -44,8 +42,7 @@ func jobControlMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
 			return interp.ExitStatus(127)
 		}
 
-		// Use real file descriptors so interactive programs (vim, htop)
-		// detect a proper terminal via isatty().
+		// Use real file descriptors so interactive programs detect a proper terminal via isatty()
 		stdout := hc.Stdout
 		stderr := hc.Stderr
 		if tw, ok := stdout.(*TeeWriter); ok && tw.file != nil {

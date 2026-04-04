@@ -11,8 +11,7 @@ import (
 	"time"
 )
 
-// AuditLog records every KI action for security review.
-// Append-only. The KI cannot delete or modify this file (Protected Path).
+// AuditLog records KI actions for security review. Append-only, protected path.
 type AuditLog struct {
 	mu       sync.Mutex
 	file     *os.File
@@ -107,7 +106,7 @@ func (a *AuditLog) rotateIfNeeded() {
 
 func (a *AuditLog) PrintRecent(n int) {
 	if a == nil {
-		fmt.Fprintln(os.Stderr, "Audit-Log nicht initialisiert")
+		fmt.Fprintln(os.Stderr, "audit log not initialized")
 		return
 	}
 	data, err := os.ReadFile(a.filePath)
@@ -115,7 +114,6 @@ func (a *AuditLog) PrintRecent(n int) {
 		fmt.Fprintf(os.Stderr, "kish: %s\n", err)
 		return
 	}
-
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	start := 0
 	if len(lines) > n {

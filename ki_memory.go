@@ -12,13 +12,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Memory provides persistent storage across kish sessions.
-// Stored as YAML files in ~/.kish/vault/
-//
-// Three layers:
-// - facts:    Long-term knowledge (user preferences, project info, learned patterns)
-// - session:  Session summaries (what was done, when, where)
-// - scratch:  Temporary notes (cleared after 7 days)
+// Memory provides persistent storage across kish sessions in ~/.kish/vault/.
+// Three layers: facts (long-term), session (summaries), scratch (7-day TTL).
 type Memory struct {
 	vaultDir string
 }
@@ -66,7 +61,6 @@ func (m *Memory) cleanExpired() {
 	}
 }
 
-// Store saves a memory entry. Tags can be passed explicitly or extracted from value (#tag syntax).
 func (m *Memory) Store(key, value, category string, tags []string) error {
 	extractedTags, cleanValue := extractTags(value)
 	if len(extractedTags) > 0 {

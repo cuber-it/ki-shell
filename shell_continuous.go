@@ -16,8 +16,6 @@ import (
 	"github.com/cuber-it/ki-shell/kish-sh/v3/syntax"
 )
 
-// ContinuousMode runs an interactive dialog where everything goes through the KI.
-// Shell commands are detected, executed, and their output is fed back to the KI.
 func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) {
 	ensureKIEngine()
 
@@ -202,8 +200,8 @@ func ContinuousMode(ctx context.Context, runner *interp.Runner, stdoutTee, stder
 	}
 }
 
-// looksLikeShellCommand checks if input is likely a shell command.
-// Conservative: when in doubt, it's text.
+// looksLikeShellCommand uses heuristics to detect shell commands.
+// Conservative: when in doubt, treat as natural language.
 func looksLikeShellCommand(input string, parser *syntax.Parser) bool {
 	fields := strings.Fields(input)
 	if len(fields) == 0 {
@@ -233,20 +231,9 @@ func looksLikeShellCommand(input string, parser *syntax.Parser) bool {
 		return true
 	}
 
-	// Try to parse — if it parses as valid shell, it could still be natural language.
-	// Conservative: if not caught above, it's text.
 	return false
 }
 
-// parseMemoryCommand detects memory commands in natural language.
-// Returns (key, value, matched). Empty value = forget command.
-//
-// Supported patterns:
-//
-//	"merk dir: ich bevorzuge vim"           -> key=ich-bevorzuge-vim, val=ich bevorzuge vim
-//	"merke: docker läuft auf port 8080"     -> key=docker-laeuft-auf-port-8080, val=...
-//	"merke name ulrich"                     -> key=name, val=ulrich
-//	"vergiss name"                          -> key=name, val="" (delete)
 func parseMemoryCommand(lower, original string) (string, string, bool) {
 	for _, prefix := range []string{"vergiss ", "forget "} {
 		if strings.HasPrefix(lower, prefix) {
@@ -273,7 +260,6 @@ func parseMemoryCommand(lower, original string) (string, string, bool) {
 			}
 			parts := strings.SplitN(rest, " ", 2)
 			if len(parts) == 2 {
-				// Heuristic: short first word = key/value pair, otherwise natural sentence
 				if len(parts[0]) <= 20 && !strings.Contains(parts[0], " ") {
 					return sanitizeFilename(parts[0]), parts[1], true
 				}

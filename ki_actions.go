@@ -12,19 +12,16 @@ import (
 	"time"
 )
 
-// ActionLevel defines what the KI is allowed to do with a command.
-// Ordered from most restricted to least restricted.
 type ActionLevel int
 
 const (
-	ActionBlocked   ActionLevel = iota // never execute, hard stop
-	ActionConfirm                      // show command, ask user [j/n]
-	ActionAutoRead                     // execute silently, read-only (ls, cat, grep, docker ps)
-	ActionAutoWrite                    // execute silently, may modify state (git commit, mv)
-	ActionAutoExec                     // execute silently, anything goes (sudo, rm — god mode)
+	ActionBlocked   ActionLevel = iota
+	ActionConfirm
+	ActionAutoRead
+	ActionAutoWrite
+	ActionAutoExec
 )
 
-// Commands that need a real terminal — never auto-execute in agent loop.
 var interactiveCommands = map[string]bool{
 	"vi": true, "vim": true, "nvim": true, "nano": true, "emacs": true,
 	"visudo": true, "vipw": true, "vigr": true, "crontab": true,
@@ -54,15 +51,12 @@ var DefaultReadOnlyCommands = []string{
 	"kubectl get", "kubectl describe", "kubectl logs", "kubectl top",
 }
 
-// ClassifyAction determines the action level for a command.
-// Chain: Blocked -> AutoExec -> AutoWrite -> AutoRead -> Confirm
 func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 	allowed, _, reason := perms.CheckCommand(command)
 	if !allowed {
 		return ActionBlocked, reason
 	}
 
-	// Interactive commands need a real terminal — never auto-execute
 	firstWord := strings.Fields(command)[0]
 	if firstWord == "ssh" {
 		// ssh with remote command is OK, ssh without is interactive
@@ -71,9 +65,8 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 		}
 	} else if interactiveCommands[firstWord] {
 		return ActionConfirm, "Interactive: needs terminal"
-	} else if strings.HasPrefix(firstWord, "sudo") && len(strings.Fields(command)) > 1 {
-		sudoCmd := strings.Fields(command)[1]
-		if interactiveCommands[sudoCmd] {
+	} else if firstWord == "sudo" && len(strings.Fields(command)) > 1 {
+		if interactiveCommands[strings.Fields(command)[1]] {
 			return ActionConfirm, "Interactive: needs terminal"
 		}
 	}
@@ -105,7 +98,6 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 		}
 	}
 
-	// SSH: check the remote command recursively
 	if strings.HasPrefix(cmdLower, "ssh ") {
 		remoteCmd := extractSSHCommand(command)
 		if remoteCmd != "" {
@@ -123,8 +115,6 @@ func ClassifyAction(command string, perms *Permissions) (ActionLevel, string) {
 	return ActionConfirm, ""
 }
 
-// extractSSHCommand extracts the remote command from an ssh invocation.
-// e.g. "ssh user@host docker ps" -> "docker ps"
 func extractSSHCommand(command string) string {
 	parts := strings.Fields(command)
 	flagsWithArg := map[string]bool{
@@ -180,16 +170,12 @@ func ExecuteAction(ctx context.Context, command string, timeout time.Duration) (
 	return stdoutStr, stderrStr, exitCode
 }
 
-// RunAgentLoop executes a multi-step KI interaction.
-// The KI requests actions (commands to run), kish executes them
-// according to permissions, feeds results back, and the KI continues
-// until it has a final answer. Max iterations to prevent infinite loops.
 func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx ShellContext, mem *Memory, maxSteps int) (string, error) {
 	if maxSteps == 0 {
 		maxSteps = 5
 	}
 
-	conversation := make([]ConversationTurn, 0)
+	var conversation []ConversationTurn
 	currentInput := input
 
 	if pe, ok := engine.(*ProviderEngine); ok {
@@ -228,7 +214,6 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 			return resp.Text, nil
 		}
 
-		// Deduplicate
 		seen := make(map[string]bool)
 		var unique []string
 		for _, a := range actions {
@@ -303,7 +288,7 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 			UserInput: currentInput,
 			Response:  responseText,
 		})
-		currentInput = "Ergebnisse:\n" + actionResults.String() + "\nSummarize the results briefly. Don't repeat technical details — the user already saw them."
+		currentInput = "Results:\n" + actionResults.String() + "\nSummarize the results briefly. Don't repeat technical details — the user already saw them."
 	}
 
 	return "", fmt.Errorf("agent loop: max steps (%d) reached", maxSteps)
@@ -328,19 +313,19 @@ func levelDecision(level ActionLevel) string {
 func buildAgentSystemPrompt(shellCtx ShellContext, mem *Memory) string {
 	base := buildSystemPrompt(shellCtx, mem, "")
 
-	var autoContext strings.Builder
+	var autoCtx strings.Builder
 	if shellCtx.Cwd != "" {
 		if out, _, exitCode := ExecuteAction(context.Background(), "ls -la", 5*time.Second); exitCode == 0 {
-			autoContext.WriteString("\nDateien im aktuellen Verzeichnis:\n" + truncateLines(out, 30))
+			autoCtx.WriteString("\nFiles in current directory:\n" + truncateLines(out, 30))
 		}
 	}
 	if shellCtx.GitBranch != "" {
 		if out, _, exitCode := ExecuteAction(context.Background(), "git status --short", 5*time.Second); exitCode == 0 && out != "" {
-			autoContext.WriteString("\nGit Status:\n" + truncateLines(out, 20))
+			autoCtx.WriteString("\nGit Status:\n" + truncateLines(out, 20))
 		}
 	}
 
-	agentInstructions := autoContext.String() + `
+	agentInstructions := autoCtx.String() + `
 
 WICHTIG: Du hast die Fähigkeit, Befehle auszuführen um Informationen zu sammeln.
 Schreibe Befehle die du ausführen willst in einen ` + "```action" + ` Block (NICHT ` + "```bash" + `!):
@@ -362,7 +347,6 @@ REGELN:
 	return base + agentInstructions
 }
 
-// extractActions finds ```action, ```bash, or ```sh blocks in the response.
 func extractActions(text string) []string {
 	var actions []string
 	prefixes := []string{"```action\n", "```bash\n", "```sh\n"}

@@ -20,7 +20,6 @@ import (
 	"github.com/cuber-it/ki-shell/kish-sh/v3/syntax"
 )
 
-// Global state
 var (
 	jobTable       = newJobTable()
 	kiEngine       KIEngine = &StubKIEngine{}
@@ -34,7 +33,6 @@ var (
 	shellLog                *ShellLog
 )
 
-// ensureKIEngine initializes the KI engine on first use (lazy loading)
 func ensureKIEngine() {
 	if kiInitialized {
 		return
@@ -45,11 +43,9 @@ func ensureKIEngine() {
 	}
 }
 
-// runAll is the main application entry point after flag parsing.
 func runAll() error {
 	verboseLevel = *flagVerbose
 
-	// Load config, permissions, audit
 	WriteDefaultConfig()
 	WriteDefaultPromptVariants()
 	cfg := LoadConfig()
@@ -69,7 +65,6 @@ func runAll() error {
 		defer mcpClient.StopAll()
 	}
 
-	// TeeWriters capture stdout/stderr for the shell log
 	stdoutTee := newTeeWriter(os.Stdout, 64*1024)
 	stderrFilter := newFilterWriter(os.Stderr, false)
 	stderrTee := newTeeWriter(stderrFilter, 16*1024)
@@ -84,41 +79,31 @@ func runAll() error {
 		return err
 	}
 
-	// Determine modes
 	interactive := *flagInteractive || (term.IsTerminal(int(os.Stdin.Fd())) && *flagCommand == "" && flag.NArg() == 0)
 	login := *flagLogin || isLoginShell()
 
-	// Load startup files — bash-conformant order
 	loadStartupFiles(runner, stderrFilter, interactive, login)
 
-	// -c "command" mode
 	if *flagCommand != "" {
-		cmd := *flagCommand
-		if isKIRequest(cmd) {
-			query := stripKIPrefix(cmd)
-			handleKI(context.Background(), query)
+		if isKIRequest(*flagCommand) {
+			handleKI(context.Background(), stripKIPrefix(*flagCommand))
 			return nil
 		}
-		return runSource(runner, strings.NewReader(cmd), "")
+		return runSource(runner, strings.NewReader(*flagCommand), "")
 	}
 
-	// Script mode
 	if flag.NArg() > 0 {
-		scriptPath := flag.Arg(0)
 		runner.Params = flag.Args()[1:]
-		return runFile(runner, scriptPath)
+		return runFile(runner, flag.Arg(0))
 	}
 
-	// Interactive mode
 	if interactive {
 		return runInteractive(runner, stdoutTee, stderrTee)
 	}
 
-	// Pipe mode
 	return runSource(runner, os.Stdin, "")
 }
 
-// loadStartupFiles loads shell RC files in bash-conformant order.
 func loadStartupFiles(runner *interp.Runner, stderrFilter *FilterWriter, interactive, login bool) {
 	if login && !*flagNoProfile {
 		sourceIfExists(runner, "/etc/profile")
@@ -154,8 +139,6 @@ func loadStartupFiles(runner *interp.Runner, stderrFilter *FilterWriter, interac
 	}
 }
 
-// ---------- Shell execution ----------
-
 func runSource(runner *interp.Runner, reader io.Reader, name string) error {
 	prog, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(reader, name)
 	if err != nil {
@@ -174,8 +157,6 @@ func runFile(runner *interp.Runner, path string) error {
 	return runSource(runner, file, path)
 }
 
-// ---------- Subshell ----------
-
 func runSubshell(code string) int {
 	runner, err := interp.New(
 		interp.StdIO(os.Stdin, os.Stdout, os.Stderr),
@@ -188,12 +169,11 @@ func runSubshell(code string) int {
 		return 1
 	}
 	runner.Reset()
-	err = runner.Run(context.Background(), prog)
-	var exitStatus interp.ExitStatus
-	if errors.As(err, &exitStatus) {
-		return int(exitStatus)
-	}
-	if err != nil {
+	if err = runner.Run(context.Background(), prog); err != nil {
+		var exitStatus interp.ExitStatus
+		if errors.As(err, &exitStatus) {
+			return int(exitStatus)
+		}
 		return 1
 	}
 	return 0
@@ -231,8 +211,6 @@ func execEnv(env expand.Environ) []string {
 	})
 	return result
 }
-
-// ---------- Helpers ----------
 
 func kishDir() string {
 	home, _ := os.UserHomeDir()

@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-// buildSystemPrompt creates the full system prompt for the KI engine.
-// This is what makes kish intelligent -- it tells the KI who it is,
-// what it can do, and what it knows about the current context.
 func buildSystemPrompt(shellCtx ShellContext, mem *Memory, customPrompt string) string {
 	var parts []string
 
@@ -138,7 +135,6 @@ type ConversationTurn struct {
 	Response  string
 }
 
-// ConversationHistory tracks recent KI interactions for multi-turn context.
 type ConversationHistory struct {
 	turns    []ConversationTurn
 	maxTurns int

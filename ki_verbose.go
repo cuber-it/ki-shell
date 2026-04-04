@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-// verboseLevel controls how much the KI shows about its internal process.
-// -v0 (default): minimal -- only KI response text, auto-read actions as dim arrow
-// -v1: show thinking -- actions requested, step count, what KI is doing
-// -v2: full debug -- system prompt, KI request, KI response, action results
 var verboseLevel int
 
 func vPrint(level int, format string, args ...interface{}) {
@@ -34,13 +30,11 @@ func vPrint(level int, format string, args ...interface{}) {
 	}
 }
 
-// vAction logs an action at v1+ level (v0 output is handled inline by the caller)
-func vAction(action string, level ActionLevel, step int, maxSteps int) {
+func vAction(action string, level ActionLevel, step, maxSteps int) {
 	if verboseLevel < 1 {
 		return
 	}
-	levelName := ""
-	color := ""
+	var levelName, color string
 	switch level {
 	case ActionAutoRead:
 		color = "\033[2m"

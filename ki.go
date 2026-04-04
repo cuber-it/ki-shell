@@ -8,14 +8,12 @@ import (
 	"os"
 )
 
-// KIEngine is the interface that any KI backend must implement.
 type KIEngine interface {
 	Query(ctx context.Context, input string, shellCtx ShellContext, out io.Writer) (*KIResponse, error)
 	Available() bool
 	Name() string
 }
 
-// ShellContext captures the current shell state for KI context.
 type ShellContext struct {
 	Cwd          string
 	LastCommands []CommandRecord
@@ -60,7 +58,6 @@ func (sc *ShellContextCollector) Record(input string, exitCode int, stdout, stde
 		Stderr:   stderr,
 	}
 
-	// Prepend (newest first)
 	sc.history = append([]CommandRecord{record}, sc.history...)
 	if len(sc.history) > sc.maxHistory {
 		sc.history = sc.history[:sc.maxHistory]

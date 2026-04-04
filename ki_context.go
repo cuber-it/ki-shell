@@ -10,8 +10,6 @@ import (
 	"strings"
 )
 
-// collectEnvVars returns a filtered set of environment variables relevant for KI context.
-// We don't send everything -- only what helps the KI understand the environment.
 func collectEnvVars() map[string]string {
 	relevant := []string{
 		"HOME", "USER", "SHELL", "LANG",
@@ -72,8 +70,6 @@ func detectProjectType() string {
 	return ""
 }
 
-// detectProjectInfo reads README or CLAUDE.md for project context.
-// Returns a short summary (first 500 chars) or empty string.
 func detectProjectInfo() string {
 	cwd, _ := os.Getwd()
 	candidates := []string{"CLAUDE.md", "README.md", "README"}

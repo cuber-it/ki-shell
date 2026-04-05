@@ -20,23 +20,56 @@ func buildPrompt() string {
 	return expandPS1(ps1)
 }
 
+// lightBackground returns true if COLORFGBG or KISH_THEME suggest a light background.
+func lightBackground() bool {
+	// KISH_THEME set by web UI theme switcher
+	switch os.Getenv("KISH_THEME") {
+	case "white", "sepia":
+		return true
+	}
+	// Standard terminal hint
+	if bg := os.Getenv("COLORFGBG"); bg != "" {
+		parts := strings.Split(bg, ";")
+		if len(parts) >= 2 && (parts[len(parts)-1] == "15" || parts[len(parts)-1] == "7") {
+			return true
+		}
+	}
+	return false
+}
+
 func defaultPrompt() string {
 	cwd := shortCwd()
+	light := lightBackground()
+
+	// Colors: dark bg uses bright colors, light bg uses dark colors
+	var cOK, cErr, cName, cGit string
+	if light {
+		cOK = "\033[32m"      // dark green
+		cErr = "\033[31m"     // dark red
+		cName = "\033[34m"    // dark blue
+		cGit = "\033[35m"     // dark magenta
+	} else {
+		cOK = "\033[32m"      // green
+		cErr = "\033[31m"     // red
+		cName = "\033[1;36m"  // bold cyan
+		cGit = "\033[35m"     // magenta
+	}
+	reset := "\033[0m"
 
 	var exitIndicator string
 	if lastExitCode == 0 {
-		exitIndicator = "\033[32m✓\033[0m"
+		exitIndicator = cOK + "✓" + reset
 	} else {
-		exitIndicator = fmt.Sprintf("\033[31m%d\033[0m", lastExitCode)
+		exitIndicator = fmt.Sprintf("%s%d%s", cErr, lastExitCode, reset)
 	}
 
 	branch := detectGitBranch()
 	var gitPart string
 	if branch != "" {
-		gitPart = fmt.Sprintf(" \033[35m(%s)\033[0m", branch)
+		gitPart = fmt.Sprintf(" %s(%s)%s", cGit, branch, reset)
 	}
 
-	return fmt.Sprintf("%s \033[1;36mkish\033[0m %s%s $ ", exitIndicator, cwd, gitPart)
+	return fmt.Sprintf("%s %skish%s %s%s $ ", exitIndicator, cName, reset, cwd, gitPart)
 }
 
 func expandPS1(ps1 string) string {

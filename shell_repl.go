@@ -81,6 +81,9 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 		}
 
 		if isKIRequest(line) {
+			if kishHistory != nil {
+				kishHistory.Add(line)
+			}
 			query := stripKIPrefix(line)
 			if query == "start" || query == "continuous" || query == "chat" {
 				kiCtx, kiCancel := context.WithCancel(context.Background())
@@ -118,6 +121,9 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 		}
 
 		if handleBuiltin(line) {
+			if kishHistory != nil {
+				kishHistory.Add(line)
+			}
 			rl.SetPrompt(buildPrompt())
 			continue
 		}

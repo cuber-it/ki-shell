@@ -6,33 +6,39 @@
 <title>kish</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
 <style>
+:root { --bg: #1a1a2e; --bg2: #16213e; --border: #0f3460; --fg: #e0e0e0; --accent: #00d4ff; --ok: #4caf50; --dim: #666; --err: #ff4444; }
+[data-theme="sepia"] { --bg: #f4ecd8; --bg2: #e8dcc8; --border: #c4b69c; --fg: #3e2f1c; --accent: #8b4513; --ok: #556b2f; --dim: #8b7d6b; --err: #a0522d; }
+[data-theme="white"] { --bg: #ffffff; --bg2: #f5f5f5; --border: #ddd; --fg: #222; --accent: #0066cc; --ok: #228b22; --dim: #999; --err: #cc0000; }
+[data-theme="terminal"] { --bg: #000000; --bg2: #0a0a0a; --border: #333; --fg: #00ff00; --accent: #00ff00; --ok: #00ff00; --dim: #006600; --err: #ff0000; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #1a1a2e; color: #e0e0e0; font-family: monospace; height: 100vh; display: flex; flex-direction: column; }
-#header { background: #16213e; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #0f3460; }
-#header h1 { font-size: 14px; color: #00d4ff; }
-#header .status { font-size: 12px; color: #888; }
-#header .status.connected { color: #4caf50; }
+body { background: var(--bg); color: var(--fg); font-family: monospace; height: 100vh; display: flex; flex-direction: column; }
+#header { background: var(--bg2); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+#header h1 { font-size: 14px; color: var(--accent); }
+#header .status { font-size: 12px; color: var(--dim); }
+#header .status.connected { color: var(--ok); }
 #main { display: flex; flex: 1; overflow: hidden; }
 #terminal-container { flex: 1; padding: 4px; }
-#ki-panel { width: 400px; background: #16213e; border-left: 1px solid #0f3460; display: flex; flex-direction: column; }
+#ki-panel { width: 400px; background: var(--bg2); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
 #ki-panel.hidden { display: none; }
 #ki-messages { flex: 1; overflow-y: auto; padding: 12px; font-size: 13px; }
-#ki-messages .user { color: #00d4ff; margin-bottom: 4px; }
-#ki-messages .ki { color: #e0e0e0; margin-bottom: 12px; white-space: pre-wrap; }
-#ki-input { display: flex; padding: 8px; border-top: 1px solid #0f3460; }
-#ki-input input { flex: 1; background: #1a1a2e; border: 1px solid #0f3460; color: #e0e0e0; padding: 6px 10px; font-family: monospace; font-size: 13px; outline: none; }
-#ki-input input:focus { border-color: #00d4ff; }
-#ki-input button { background: #0f3460; color: #00d4ff; border: none; padding: 6px 12px; cursor: pointer; margin-left: 4px; }
-#footer { background: #16213e; padding: 4px 16px; font-size: 11px; color: #666; border-top: 1px solid #0f3460; display: flex; gap: 16px; }
-.toggle-btn { background: none; border: 1px solid #0f3460; color: #888; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-.toggle-btn.active { color: #00d4ff; border-color: #00d4ff; }
+#ki-messages .user { color: var(--accent); margin-bottom: 4px; }
+#ki-messages .ki { color: var(--fg); margin-bottom: 12px; white-space: pre-wrap; }
+#ki-input { display: flex; padding: 8px; border-top: 1px solid var(--border); }
+#ki-input input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 6px 10px; font-family: monospace; font-size: 13px; outline: none; }
+#ki-input input:focus { border-color: var(--accent); }
+#ki-input button { background: var(--bg2); color: var(--accent); border: 1px solid var(--border); padding: 6px 12px; cursor: pointer; margin-left: 4px; }
+#footer { background: var(--bg2); padding: 4px 16px; font-size: 11px; color: var(--dim); border-top: 1px solid var(--border); display: flex; gap: 16px; }
+.toggle-btn { background: none; border: 1px solid var(--border); color: var(--dim); padding: 2px 8px; cursor: pointer; font-size: 12px; }
+.toggle-btn.active { color: var(--accent); border-color: var(--accent); }
+#theme-select { background: var(--bg); color: var(--fg); border: 1px solid var(--border); font-size: 11px; padding: 1px 4px; font-family: monospace; }
 
-#login { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #1a1a2e; display: flex; justify-content: center; align-items: center; z-index: 100; }
+#login { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 100; }
 #login.hidden { display: none; }
 #login form { text-align: center; }
-#login input { background: #16213e; border: 1px solid #0f3460; color: #e0e0e0; padding: 8px 12px; font-size: 16px; font-family: monospace; width: 300px; outline: none; }
-#login button { background: #0f3460; color: #00d4ff; border: none; padding: 8px 16px; font-size: 14px; cursor: pointer; margin-top: 8px; }
-#login h2 { color: #00d4ff; margin-bottom: 16px; }
+#login input { background: var(--bg2); border: 1px solid var(--border); color: var(--fg); padding: 8px 12px; font-size: 16px; font-family: monospace; width: 300px; outline: none; }
+#login button { background: var(--bg2); color: var(--accent); border: 1px solid var(--border); padding: 8px 16px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+#login h2 { color: var(--accent); margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -50,6 +56,12 @@ body { background: #1a1a2e; color: #e0e0e0; font-family: monospace; height: 100v
   <h1>kish</h1>
   <div>
     <button class="toggle-btn active" onclick="toggleKI()">KI</button>
+    <select id="theme-select" onchange="setTheme(this.value)">
+      <option value="dark">Dark</option>
+      <option value="sepia">Sepia</option>
+      <option value="white">White</option>
+      <option value="terminal">Terminal</option>
+    </select>
   </div>
   <div id="status" class="status">disconnected</div>
 </div>
@@ -78,6 +90,28 @@ let token = '';
 let ws = null;
 let term = null;
 
+const termThemes = {
+  dark:     { background: '#1a1a2e', foreground: '#e0e0e0', cursor: '#00d4ff' },
+  sepia:    { background: '#f4ecd8', foreground: '#3e2f1c', cursor: '#8b4513' },
+  white:    { background: '#ffffff', foreground: '#222222', cursor: '#0066cc' },
+  terminal: { background: '#000000', foreground: '#00ff00', cursor: '#00ff00' },
+};
+
+function setTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem('kish-theme', name);
+  if (term) term.options.theme = termThemes[name];
+}
+
+// Restore saved theme
+(function() {
+  const saved = localStorage.getItem('kish-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('theme-select').value = saved;
+  });
+})();
+
 function doLogin(e) {
   e.preventDefault();
   token = document.getElementById('token-input').value;
@@ -87,7 +121,8 @@ function doLogin(e) {
 }
 
 function initTerminal() {
-  term = new window.Terminal({ cursorBlink: true, fontSize: 14, theme: { background: '#1a1a2e' } });
+  const themeName = localStorage.getItem('kish-theme') || 'dark';
+  term = new window.Terminal({ cursorBlink: true, fontSize: 14, theme: termThemes[themeName] });
   const fit = new window.FitAddon.FitAddon();
   term.loadAddon(fit);
   term.open(document.getElementById('terminal-container'));
@@ -100,7 +135,6 @@ function initTerminal() {
   ws.onopen = () => {
     document.getElementById('status').textContent = 'connected';
     document.getElementById('status').className = 'status connected';
-    // Send terminal size
     ws.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows}));
   };
   ws.onmessage = (e) => term.write(e.data);
@@ -127,10 +161,8 @@ async function sendKI() {
   const query = input.value.trim();
   if (!query) return;
   input.value = '';
-
   const msgs = document.getElementById('ki-messages');
   msgs.innerHTML += '<div class="user">You: ' + escHtml(query) + '</div>';
-
   try {
     const resp = await fetch('/api/ki', {
       method: 'POST',
@@ -140,7 +172,7 @@ async function sendKI() {
     const data = await resp.json();
     msgs.innerHTML += '<div class="ki">' + escHtml(data.response || data.error || 'no response') + '</div>';
   } catch(e) {
-    msgs.innerHTML += '<div class="ki" style="color:red">Error: ' + e + '</div>';
+    msgs.innerHTML += '<div class="ki" style="color:var(--err)">Error: ' + e + '</div>';
   }
   msgs.scrollTop = msgs.scrollHeight;
 }

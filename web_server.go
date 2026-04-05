@@ -49,10 +49,10 @@ func startWebBackground(addr, token string, insecure bool) {
 	if addr == "" {
 		addr = ":12080"
 	}
-	if token == "" {
-		token = generateToken()
-	}
 	webToken = token
+	if token == "" {
+		fmt.Fprintln(os.Stderr, "[web] WARNING: no token — anyone can connect")
+	}
 
 	cfg := WebConfig{Addr: addr, Token: token, TLS: !insecure}
 	go func() {
@@ -130,12 +130,13 @@ func runWebServer(cfg WebConfig) error {
 }
 
 func checkAuth(r *http.Request, token string) bool {
-	// Check header
+	if token == "" {
+		return true // no auth required
+	}
 	auth := r.Header.Get("Authorization")
 	if strings.TrimPrefix(auth, "Bearer ") == token {
 		return true
 	}
-	// Check query param (for WebSocket)
 	if r.URL.Query().Get("token") == token {
 		return true
 	}

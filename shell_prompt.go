@@ -13,11 +13,14 @@ import (
 var lastExitCode int
 
 func buildPrompt() string {
-	ps1 := os.Getenv("KISH_PS1")
-	if ps1 == "" {
-		return defaultPrompt()
+	// KISH_PS1 overrides, then PS1, then default
+	if ps1 := os.Getenv("KISH_PS1"); ps1 != "" {
+		return expandPS1(ps1)
 	}
-	return expandPS1(ps1)
+	if ps1 := os.Getenv("PS1"); ps1 != "" {
+		return expandPS1(ps1)
+	}
+	return defaultPrompt()
 }
 
 // lightBackground returns true if COLORFGBG or KISH_THEME suggest a light background.

@@ -225,6 +225,11 @@ Think of it as: Claude Code is your AI pair programmer. kish is your terminal, w
 
 Apache 2.0
 
+## Credits
+
+- Shell engine based on [mvdan/sh](https://github.com/mvdan/sh) by Daniel Martí (MIT license)
+- AI providers via [heinzel-ai-core-go](https://github.com/cuber-it/heinzel-ai-core-go)
+
 ## Author
 
 Ulrich Cuber / cuber IT service — built with AI assistance (Claude)

@@ -31,6 +31,7 @@ var (
 	kiPermissions           = DefaultPermissions()
 	rateLimiter             = newRateLimiter(20, 200, 10)
 	shellLog                *ShellLog
+	loggingEnabled          = true
 )
 
 func ensureKIEngine() {

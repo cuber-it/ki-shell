@@ -167,7 +167,7 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 
 			out, serr := stdoutTee.String(), stderrTee.String()
 			shellContext.Record(input, lastExitCode, out, serr)
-			if shellLog != nil {
+			if shellLog != nil && loggingEnabled {
 				shellLog.Record(input, lastExitCode, out, serr)
 			}
 			if kishHistory != nil {
@@ -227,6 +227,23 @@ func handleBuiltin(line string) bool {
 			startWebBackground(addr, token, true)
 		case "stop":
 			stopWebBackground()
+		}
+	case "log":
+		if len(fields) > 1 {
+			switch fields[1] {
+			case "on":
+				loggingEnabled = true
+				fmt.Fprintln(os.Stderr, "Logging enabled")
+			case "off":
+				loggingEnabled = false
+				fmt.Fprintln(os.Stderr, "Logging disabled")
+			}
+		} else {
+			if loggingEnabled {
+				fmt.Fprintln(os.Stdout, "Logging: on")
+			} else {
+				fmt.Fprintln(os.Stdout, "Logging: off")
+			}
 		}
 	case "ki:skills":
 		fmt.Fprintln(os.Stdout, listSkills())

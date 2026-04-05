@@ -99,6 +99,11 @@ Flags:
   --version    print version
   --help       show this help
 
+Web UI:
+  --web addr   start web UI (e.g. --web :12080)
+  --token str  auth token for web UI (auto-generated if omitted)
+  --insecure   disable TLS for web UI
+
 KI Commands (interactive):
   @ki <query>        ask the KI (configurable prefix)
   ? [query]          quick context query (last command)

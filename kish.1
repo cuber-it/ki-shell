@@ -37,6 +37,16 @@ Print version and exit.
 .TP
 .B \-\-help
 Show help and exit.
+.TP
+.B \-\-web \fIaddr\fR
+Start web UI on the given address (e.g. :12080). Provides a browser-based terminal
+with KI panel, REST API, and token authentication. TLS is enabled by default.
+.TP
+.B \-\-token \fIstr\fR
+Set authentication token for the web UI. If omitted, a random token is generated and printed.
+.TP
+.B \-\-insecure
+Disable TLS for the web UI. Only use for local testing.
 .SH KI COMMANDS
 These commands are available in interactive mode:
 .TP

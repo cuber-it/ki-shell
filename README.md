@@ -147,8 +147,8 @@ Everything else is configurable in ~/.kish/permissions.yaml.
 ├── kishrc              Shell startup (aliases, functions)
 ├── prompts.yaml        Prompt A/B testing variants
 ├── completions/        YAML tab completion specs (git, docker, ssh)
-├── history             Command history (readline)
-├── history_ts          Timestamped history
+├── history             Timestamped command history
+├── readline_history    Readline state (internal)
 ├── shell.log           Activity log (secret-scrubbed, rotation)
 ├── audit.log           AI action audit trail (append-only)
 ├── costs.db            API cost tracking (SQLite)
@@ -169,7 +169,29 @@ Everything else is configurable in ~/.kish/permissions.yaml.
 --noprofile  skip /etc/profile / ~/.profile
 --version    print version
 --help       show help
+--web addr   start web UI (e.g. --web :12080)
+--token str  auth token for web UI
+--insecure   disable TLS for web UI
 ```
+
+## Web UI
+
+kish can run as a web-based terminal for remote administration:
+
+```bash
+kish --web :12080                        # TLS + auto-generated token
+kish --web :12080 --token mysecret       # custom token
+kish --web :12080 --insecure             # no TLS (local testing only)
+```
+
+Open `https://hostname:12080` in a browser, enter the token, and you get:
+- Full terminal (xterm.js) with a real kish PTY session
+- KI panel for AI queries alongside the terminal
+- REST API: `/api/status`, `/api/ki`, `/api/exec`, `/api/history`, `/api/costs`, `/api/memory`
+- Token auth on all endpoints
+- Self-signed TLS cert (auto-generated, or bring your own)
+
+**This is for intranet use.** If you expose it to the internet, that's on you.
 
 ## Architecture
 

@@ -236,6 +236,12 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 
 		vPrint(1, "KI requested %d action(s)", len(actions))
 
+		// Show text before/between actions first
+		textPart := stripActions(responseText)
+		if strings.TrimSpace(textPart) != "" {
+			fmt.Fprint(os.Stdout, textPart)
+		}
+
 		var actionResults strings.Builder
 		for i, action := range actions {
 			level, reason := ClassifyAction(action, &kiPermissions)
@@ -280,11 +286,6 @@ func RunAgentLoop(ctx context.Context, engine KIEngine, input string, shellCtx S
 				vActionResult(action, exitCode, stdout, stderr)
 				actionResults.WriteString(fmt.Sprintf("$ %s\nexit: %d\nstdout:\n%sstderr:\n%s\n", action, exitCode, stdout, stderr))
 			}
-		}
-
-		textPart := stripActions(responseText)
-		if strings.TrimSpace(textPart) != "" {
-			fmt.Fprint(os.Stdout, textPart)
 		}
 
 		conversation = append(conversation, ConversationTurn{

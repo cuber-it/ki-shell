@@ -5,32 +5,33 @@ A bash-compatible shell with native AI integration. Not a chatbot with shell acc
 ```
 $ ls -la                              → runs immediately (shell)
 $ git push origin main                → runs immediately (shell)
-$ ki what's wrong with the build     → asks AI, shows answer
+$ ki what's wrong with the build      → asks AI, shows answer
 $ cat error.log | ki "summarize"      → pipes output to AI
-$ ki check what's running on server  → AI runs ssh, docker ps, analyzes
+$ ki check what's running on server   → AI runs ssh, docker ps, analyzes
 ```
 
 ## Features
 
 **Shell** — full bash compatibility via kish-sh (fork of mvdan/sh):
-- Pipes, redirects, loops, functions, aliases, arrays
+- Pipes, redirects, loops, functions, aliases, arrays, brace expansion
 - Real subshells via re-exec (process isolation)
 - Job control (Ctrl+Z, fg, bg, jobs, disown)
 - Tab completion with YAML specs (git, docker, ssh, variables)
-- Readline with persistent timestamped history
-- Bang expansion (!!, !n, !string)
-- PS1-compatible prompt (reads `PS1`, `KISH_PS1` overrides, default: git branch + exit code)
-- `.kishrc` + `.bashrc` fallback
+- Readline with persistent timestamped history and bang expansion (!!, !n, !string)
+- PS1-compatible prompt (`PS1` supported, `KISH_PS1` overrides, default: git branch + exit code)
+- Bash-conformant startup (`.bashrc`, `.kishrc`, `/etc/profile`)
 - Shebang support (`#!/usr/bin/env kish`)
 
 **AI** — powered by OpenAI + Anthropic (via heinzel provider library):
-- `ki` / `ki` prefix for AI queries (explicit, no guessing)
+- `ki` prefix for AI queries (explicit, configurable, no guessing)
 - `?` shortcut for quick context queries
 - `ki start` / `ki stop` — continuous dialog mode
 - Agent mode: AI runs read-only commands autonomously, confirms writes
+- Pre-thinking: decomposes complex tasks before generating commands
+- Skills: predefined YAML scripts the AI prefers over improvising
 - Multi-turn conversation history
 - Shell context: cwd, git branch, project type, recent commands + output
-- Persistent memory with tags and decay
+- Persistent memory with tags and decay (`remember` / `recall` / `forget`)
 - Prompt A/B testing (`ki:variant`)
 - Cost tracking (`ki:costs`)
 - MCP client support
@@ -41,10 +42,19 @@ $ ki check what's running on server  → AI runs ssh, docker ps, analyzes
 - 5 action levels: Blocked → Confirm → AutoRead → AutoWrite → AutoExec
 - AI cannot modify its own config (only hardcoded block)
 - Destructive commands (rm, kill, sudo) need red confirmation
+- Interactive commands (vim, htop, visudo) blocked from agent auto-execution
 - Secret scrubbing in logs (API keys, passwords, JWTs, SSH keys)
 - Audit log for every AI action
 - Rate limiting (20/min, 200/hour)
 - Context filtering (no stdout/stderr sent to API by default)
+- Toggleable logging (`log on` / `log off`)
+
+**Web UI** — browser-based terminal for remote administration:
+- `web start` from within a running shell (shared session, same permissions)
+- Full terminal (xterm.js) with KI panel alongside
+- REST API for status, KI queries, command execution, history, costs, memory
+- Token authentication, self-signed TLS
+- Themes: Dark, Sepia, White, Terminal
 
 ## Install
 
@@ -62,14 +72,13 @@ vi ~/.kish/config.yaml
 ```
 
 ```yaml
-# ~/.kish/config.yaml
 ki:
   provider: "openai"       # or "anthropic"
   model: "gpt-4o-mini"
-  prefix: "ki"              # see note below
+  prefix: "ki"              # configurable: "ai", "hey", "ask", ...
 ```
 
-> **Note on the `ki` prefix:** "KI" is the German word for AI (*Künstliche Intelligenz*) — that's where kish gets its name. The prefix is freely configurable — set it to `"ai"`, `"hey"`, `"ask"`, or whatever fits your workflow. But choose carefully: any word you pick will be intercepted and sent to the AI instead of being executed as a shell command.
+> **Note on the `ki` prefix:** "KI" is the German word for AI (*Künstliche Intelligenz*) — that's where kish gets its name. The prefix is freely configurable, but choose carefully: any word you pick will be intercepted and sent to the AI instead of being executed as a shell command.
 
 ## Usage
 
@@ -81,7 +90,7 @@ $ docker ps
 
 # Ask the AI
 $ ki what does this error mean
-$ ki how do I find files larger than 100MB
+$ ki: how do I find files larger than 100MB
 $ ? why did that fail
 
 # Pipe to AI
@@ -99,36 +108,35 @@ ki> stop
 $ ki check what's running on the server and if anything is unhealthy
 
 # Memory
-$ remember editor "I use vim"           # or: merke editor "I use vim"
-$ recall editor                         # or: erinnere editor
-$ forget editor                         # or: vergiss editor
+$ remember editor "I use vim #tools"
+$ recall editor
+$ forget editor
 
-# Continuous dialog mode
-$ ki start                              # start dialog (ki> prompt)
-$ ki stop                               # back to normal shell
+# Web UI (starts within the running shell)
+$ web start                            # auto-token, port 12080
+$ web start --port :8080 --token abc   # custom
+$ web start --notoken                  # no auth (intranet only!)
+$ web stop
 
-# Skills (predefined scripts the KI can call)
-$ ki:skills                             # list available skills
-# Add your own: ~/.kish/skills/myskill.yaml
+# Skills
+$ ki:skills                            # list available skills
 
 # Logs & memory
-$ showlogs                              # all logs (shell + audit + conversation)
-$ showlogs shell 10                     # last 10 shell log entries
-$ showlogs audit                        # audit log only
-$ showmemory                            # all vault entries
-$ showmemory facts                      # facts only
+$ showlogs                             # all logs (paged)
+$ showlogs shell 10                    # shell log only
+$ showmemory                           # vault contents
+$ log on / log off                     # toggle logging
 
 # Status & debug
-$ ki:status                             # engine, memory, permissions
-$ ki:costs                              # API cost tracking
-$ ki:disk                               # ~/.kish/ disk usage
-$ ki:prompt                             # show current system prompt
-$ ki:variant                            # list/switch prompt variants
-$ ki:skills                             # list loaded skills
-$ ki:audit 10                           # last 10 AI actions
-$ history 20                            # last 20 commands with timestamps
-$ kish -v 1                             # show AI thinking
-$ kish -v 2                             # full debug output
+$ ki:status                            # engine, memory, permissions
+$ ki:costs                             # API cost tracking
+$ ki:disk                              # ~/.kish/ disk usage
+$ ki:prompt                            # current system prompt
+$ ki:variant                           # prompt A/B testing
+$ ki:audit 10                          # last 10 AI actions
+$ history 20                           # timestamped, with TTY + PID
+$ kish -v 1                            # show AI thinking
+$ kish -v 2                            # full debug output
 ```
 
 ## Security model
@@ -139,7 +147,7 @@ With ki:     Everything goes through the permission system.
 
 Action levels:
   AutoRead    ls, cat, grep, docker ps    → runs silently
-  Confirm     rm, mv, git push            → asks you first [j/n/e]
+  Confirm     rm, mv, git push            → asks you first [y/n/e]
   Blocked     vi ~/.kish/config.yaml      → AI can't modify itself
 
 Hardcoded (cannot be disabled):
@@ -157,10 +165,10 @@ Everything else is configurable in ~/.kish/permissions.yaml.
 ├── permissions.yaml    Action levels, blocked patterns, context settings
 ├── kishrc              Shell startup (aliases, functions)
 ├── prompts.yaml        Prompt A/B testing variants
-├── completions/        YAML tab completion specs (git, docker, ssh)
-├── history             Timestamped command history
-├── readline_history    Readline state (internal)
-├── shell.log           Activity log (secret-scrubbed, rotation)
+├── skills/             Predefined scripts (YAML)
+├── completions/        Tab completion specs (YAML)
+├── history             Timestamped command history (kill-safe, TTY + PID)
+├── shell.log           Activity log (secret-scrubbed, gzip rotation)
 ├── audit.log           AI action audit trail (append-only)
 ├── costs.db            API cost tracking (SQLite)
 └── vault/              Persistent AI memory
@@ -172,7 +180,7 @@ Everything else is configurable in ~/.kish/permissions.yaml.
 ## Flags
 
 ```
--c string    execute command (supports @ki prefix)
+-c string    execute command (supports ki prefix)
 -i           force interactive mode
 -l           login shell
 -v int       verbose: 0=quiet, 1=actions, 2=debug
@@ -180,38 +188,21 @@ Everything else is configurable in ~/.kish/permissions.yaml.
 --noprofile  skip /etc/profile / ~/.profile
 --version    print version
 --help       show help
---web addr   start web UI (e.g. --web :12080)
+--web addr   start web UI as standalone (e.g. --web :12080)
 --token str  auth token for web UI
 --insecure   disable TLS for web UI
 ```
 
-## Web UI
-
-kish can run as a web-based terminal for remote administration:
-
-```bash
-kish --web :12080                        # TLS + auto-generated token
-kish --web :12080 --token mysecret       # custom token
-kish --web :12080 --insecure             # no TLS (local testing only)
-```
-
-Open `https://hostname:12080` in a browser, enter the token, and you get:
-- Full terminal (xterm.js) with a real kish PTY session
-- KI panel for AI queries alongside the terminal
-- REST API: `/api/status`, `/api/ki`, `/api/exec`, `/api/history`, `/api/costs`, `/api/memory`
-- Token auth on all endpoints
-- Self-signed TLS cert (auto-generated, or bring your own)
-
-**This is for intranet use.** If you expose it to the internet, that's on you.
-
 ## Architecture
 
 - **kish-sh/**: Fork of [mvdan/sh](https://github.com/mvdan/sh) with SubshellHandler API and bash compat fixes
-- **heinzel provider**: OpenAI + Anthropic with retry, streaming, cost tracking
+- **heinzel provider**: OpenAI + Anthropic with retry, streaming, cost tracking (SQLite)
 - **Permission system**: 5 action levels, secret scrubbing, audit log, rate limiting
 - **Memory**: YAML vault with facts, sessions, scratch, tags, decay
+- **Web UI**: Embedded xterm.js + WebSocket + REST API, runs as goroutine in-process
+- **Skills**: YAML-defined scripts the AI invokes instead of improvising
 
-~5600 LOC Go · 18 tests · 95/95 bash compatibility · 12MB binary
+~6000 LOC Go · 18 tests · 95/95 bash compatibility · 12MB binary
 
 ## What kish is not
 

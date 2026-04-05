@@ -162,8 +162,11 @@ API key for OpenAI provider.
 .B ANTHROPIC_API_KEY
 API key for Anthropic provider (planned).
 .TP
+.B PS1
+Shell prompt string (bash-compatible). Supported escapes: \\u \\h \\H \\w \\W \\$ \\n \\t \\A \\d \\j \\? \\e \\[ \\].
+.TP
 .B KISH_PS1
-Custom prompt string (PS1-compatible escapes).
+Overrides PS1. If neither is set, a default prompt with git branch and exit code is used.
 .TP
 .B KISH_GOD_MODE=yes
 Disable all hardcoded safety checks. Use at your own risk.

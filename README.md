@@ -19,7 +19,7 @@ $ ki check what's running on server  → AI runs ssh, docker ps, analyzes
 - Tab completion with YAML specs (git, docker, ssh, variables)
 - Readline with persistent timestamped history
 - Bang expansion (!!, !n, !string)
-- PS1-compatible prompt with git branch + exit code
+- PS1-compatible prompt (reads `PS1`, `KISH_PS1` overrides, default: git branch + exit code)
 - `.kishrc` + `.bashrc` fallback
 - Shebang support (`#!/usr/bin/env kish`)
 

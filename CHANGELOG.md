@@ -19,6 +19,9 @@
 - Action deduplication
 
 ### Shell
+- PS1 support (bash-compatible), KISH_PS1 overrides, default with git branch + exit code
+- History reload from disk (parallel sessions see each other)
+- Toggleable logging (log on/off)
 - Kill-safe history with fsync, TTY name, PID per entry
 - Bang expansion reads from timestamped history (not readline)
 - Log format: == timestamp ==> command, <== timestamp == response

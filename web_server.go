@@ -103,8 +103,14 @@ func checkAuth(r *http.Request, token string) bool {
 func authWrap(token string, handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !checkAuth(r, token) {
+			if audit != nil {
+				audit.Log("WEB", "unauthorized: "+r.URL.Path, "denied", r.RemoteAddr)
+			}
 			http.Error(w, "unauthorized", 401)
 			return
+		}
+		if audit != nil {
+			audit.Log("WEB", r.Method+" "+r.URL.Path, "allowed", r.RemoteAddr)
 		}
 		handler(w, r)
 	}
@@ -119,9 +125,10 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	// Start kish in a PTY
+	sessionID := generateToken()[:8]
 	kishPath, _ := os.Executable()
 	cmd := exec.Command(kishPath)
-	cmd.Env = os.Environ()
+	cmd.Env = append(os.Environ(), "KISH_WEB_SESSION="+sessionID, "KISH_WEB_CLIENT="+r.RemoteAddr)
 
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
@@ -131,7 +138,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	defer ptmx.Close()
 
 	if audit != nil {
-		audit.Log("WEB", "terminal session started", "auto", r.RemoteAddr)
+		audit.Log("WEB", fmt.Sprintf("terminal session %s started", sessionID), "auto", r.RemoteAddr)
 	}
 
 	var once sync.Once
@@ -177,7 +184,7 @@ func handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	cmd.Wait()
 
 	if audit != nil {
-		audit.Log("WEB", "terminal session ended", "auto", r.RemoteAddr)
+		audit.Log("WEB", fmt.Sprintf("terminal session %s ended", sessionID), "auto", r.RemoteAddr)
 	}
 }
 

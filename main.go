@@ -123,6 +123,8 @@ KI Commands (interactive):
   history [n]        show command history with timestamps
   showlogs [filter] [n]  show logs (shell|audit|conversation)
   showmemory [filter]    show vault (facts|sessions|scratch)
+  ki:skills              list available skills
+  ki:disk                show ~/.kish/ disk usage
 
 More: https://github.com/cuber-it/ki-shell
 `, version)

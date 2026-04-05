@@ -107,14 +107,25 @@ $ forget editor                         # or: vergiss editor
 $ ki start                              # start dialog (ki> prompt)
 $ ki stop                               # back to normal shell
 
+# Skills (predefined scripts the KI can call)
+$ ki:skills                             # list available skills
+# Add your own: ~/.kish/skills/myskill.yaml
+
+# Logs & memory
+$ showlogs                              # all logs (shell + audit + conversation)
+$ showlogs shell 10                     # last 10 shell log entries
+$ showlogs audit                        # audit log only
+$ showmemory                            # all vault entries
+$ showmemory facts                      # facts only
+
 # Status & debug
 $ ki:status                             # engine, memory, permissions
 $ ki:costs                              # API cost tracking
+$ ki:disk                               # ~/.kish/ disk usage
 $ ki:prompt                             # show current system prompt
 $ ki:variant                            # list/switch prompt variants
+$ ki:skills                             # list loaded skills
 $ ki:audit 10                           # last 10 AI actions
-$ ki:log 5                              # last 5 shell log entries
-$ ki:search "docker"                    # search shell log
 $ history 20                            # last 20 commands with timestamps
 $ kish -v 1                             # show AI thinking
 $ kish -v 2                             # full debug output

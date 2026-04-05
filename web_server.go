@@ -50,9 +50,6 @@ func startWebBackground(addr, token string, insecure bool) {
 		addr = ":12080"
 	}
 	webToken = token
-	if token == "" {
-		fmt.Fprintln(os.Stderr, "[web] WARNING: no token — anyone can connect")
-	}
 
 	cfg := WebConfig{Addr: addr, Token: token, TLS: !insecure}
 	go func() {
@@ -68,7 +65,11 @@ func startWebBackground(addr, token string, insecure bool) {
 		proto = "http"
 	}
 	hostname, _ := os.Hostname()
-	fmt.Fprintf(os.Stderr, "[web] started on %s://%s%s (token: %s)\n", proto, hostname, addr, token)
+	if token == "" {
+		fmt.Fprintf(os.Stderr, "[web] %s://%s%s (no auth!)\n", proto, hostname, addr)
+	} else {
+		fmt.Fprintf(os.Stderr, "[web] %s://%s%s (token: %s)\n", proto, hostname, addr, token)
+	}
 }
 
 func stopWebBackground() {
@@ -82,12 +83,6 @@ func stopWebBackground() {
 }
 
 func runWebServer(cfg WebConfig) error {
-	if cfg.Token == "" {
-		cfg.Token = generateToken()
-		fmt.Fprintf(os.Stderr, "kish web: token = %s\n", cfg.Token)
-		fmt.Fprintf(os.Stderr, "kish web: save this token — you'll need it to connect\n")
-	}
-
 	mux := http.NewServeMux()
 
 	// Static files

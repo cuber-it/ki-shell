@@ -194,19 +194,29 @@ func handleBuiltin(line string) bool {
 			if webServer != nil {
 				fmt.Fprintf(os.Stdout, "Web UI running (token: %s)\n", webToken)
 			} else {
-				fmt.Fprintln(os.Stdout, "Web UI not running. Use: web start [:port] [token]")
+				fmt.Fprintln(os.Stdout, "Web UI not running. Use: web start [--port :N] [--token T]")
 			}
 			return true
 		}
 		switch fields[1] {
 		case "start":
 			addr := ":12080"
-			token := ""
-			if len(fields) > 2 {
-				addr = fields[2]
-			}
-			if len(fields) > 3 {
-				token = fields[3]
+			token := generateToken()
+			for i := 2; i < len(fields); i++ {
+				switch fields[i] {
+				case "--port":
+					if i+1 < len(fields) {
+						i++
+						addr = fields[i]
+					}
+				case "--token":
+					if i+1 < len(fields) {
+						i++
+						token = fields[i]
+					}
+				case "--notoken":
+					token = ""
+				}
 			}
 			startWebBackground(addr, token, true)
 		case "stop":

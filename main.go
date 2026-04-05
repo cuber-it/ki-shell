@@ -27,6 +27,9 @@ var (
 	flagNoProfile   = flag.Bool("noprofile", false, "do not read login files")
 	flagRestricted  = flag.Bool("r", false, "restricted shell (not implemented)")
 	flagHelp        = flag.Bool("help", false, "show help")
+	flagWeb         = flag.String("web", "", "start web UI on address (e.g. :12080)")
+	flagWebInsecure = flag.Bool("insecure", false, "disable TLS for web UI")
+	flagWebToken    = flag.String("token", "", "auth token for web UI")
 )
 
 func main() {
@@ -42,6 +45,28 @@ func main() {
 	}
 	if *flagSubshell != "" {
 		os.Exit(runSubshell(*flagSubshell))
+	}
+
+	if *flagWeb != "" {
+		// Init config for web mode
+		WriteDefaultConfig()
+		cfg := LoadConfig()
+		kiConfig = cfg
+		initKIPrefix(cfg)
+		kiPermissions = LoadPermissions()
+		initAudit()
+		initHistory()
+
+		err := runWebServer(WebConfig{
+			Addr:  *flagWeb,
+			Token: *flagWebToken,
+			TLS:   !*flagWebInsecure,
+		})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "kish web:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 
 	err := runAll()

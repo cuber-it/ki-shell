@@ -52,7 +52,7 @@ func defaultPrompt() string {
 		cOK = "\033[32m"      // green
 		cErr = "\033[31m"     // red
 		cName = "\033[1;36m"  // bold cyan
-		cGit = "\033[35m"     // magenta
+		cGit = "\033[1;33m"   // bold yellow
 	}
 	reset := "\033[0m"
 

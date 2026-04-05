@@ -189,6 +189,25 @@ func handleBuiltin(line string) bool {
 	case "ki:clear":
 		kiConversation.Clear()
 		fmt.Fprintln(os.Stderr, "Conversation cleared.")
+	case "web":
+		if len(fields) < 2 {
+			if webServer != nil {
+				fmt.Fprintf(os.Stdout, "Web UI running (token: %s)\n", webToken)
+			} else {
+				fmt.Fprintln(os.Stdout, "Web UI not running. Use: web start [:port]")
+			}
+			return true
+		}
+		switch fields[1] {
+		case "start":
+			addr := ":12080"
+			if len(fields) > 2 {
+				addr = fields[2]
+			}
+			startWebBackground(addr, "", true)
+		case "stop":
+			stopWebBackground()
+		}
 	case "ki:skills":
 		fmt.Fprintln(os.Stdout, listSkills())
 	case "ki:disk":

@@ -37,6 +37,49 @@ type WebConfig struct {
 	KeyFile  string
 }
 
+var webServer *http.Server
+var webToken string
+
+// startWebBackground starts the web server as a goroutine within the running shell.
+func startWebBackground(addr, token string, insecure bool) {
+	if webServer != nil {
+		fmt.Fprintln(os.Stderr, "[web] already running")
+		return
+	}
+	if addr == "" {
+		addr = ":12080"
+	}
+	if token == "" {
+		token = generateToken()
+	}
+	webToken = token
+
+	cfg := WebConfig{Addr: addr, Token: token, TLS: !insecure}
+	go func() {
+		err := runWebServer(cfg)
+		if err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "[web] error: %s\n", err)
+		}
+		webServer = nil
+	}()
+
+	proto := "https"
+	if insecure {
+		proto = "http"
+	}
+	fmt.Fprintf(os.Stderr, "[web] started on %s://%s (token: %s)\n", proto, addr, token)
+}
+
+func stopWebBackground() {
+	if webServer == nil {
+		fmt.Fprintln(os.Stderr, "[web] not running")
+		return
+	}
+	webServer.Shutdown(context.Background())
+	webServer = nil
+	fmt.Fprintln(os.Stderr, "[web] stopped")
+}
+
 func runWebServer(cfg WebConfig) error {
 	if cfg.Token == "" {
 		cfg.Token = generateToken()
@@ -72,19 +115,17 @@ func runWebServer(cfg WebConfig) error {
 		addr = ":12080"
 	}
 
-	fmt.Fprintf(os.Stderr, "kish web: listening on %s\n", addr)
+	srv := &http.Server{Addr: addr, Handler: mux}
+	webServer = srv
 
 	if cfg.TLS {
 		certFile, keyFile := cfg.CertFile, cfg.KeyFile
 		if certFile == "" {
 			certFile, keyFile = ensureSelfSignedCert()
 		}
-		fmt.Fprintf(os.Stderr, "kish web: TLS enabled\n")
-		return http.ListenAndServeTLS(addr, certFile, keyFile, mux)
+		return srv.ListenAndServeTLS(certFile, keyFile)
 	}
-
-	fmt.Fprintf(os.Stderr, "kish web: WARNING — no TLS, use --insecure only for local testing\n")
-	return http.ListenAndServe(addr, mux)
+	return srv.ListenAndServe()
 }
 
 func checkAuth(r *http.Request, token string) bool {

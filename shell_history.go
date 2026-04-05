@@ -72,7 +72,19 @@ func (kh *KishHistory) Add(command string) {
 	kh.file.Sync()
 }
 
+// reload re-reads the history file from disk to pick up entries from other sessions.
+func (kh *KishHistory) reload() {
+	kh.mu.Lock()
+	defer kh.mu.Unlock()
+	kh.entries = nil
+	kh.loadLocked()
+}
+
 func (kh *KishHistory) load() {
+	kh.loadLocked()
+}
+
+func (kh *KishHistory) loadLocked() {
 	data, err := os.ReadFile(kh.path)
 	if err != nil {
 		return
@@ -130,6 +142,9 @@ func printHistory(fields []string) {
 	if kishHistory == nil {
 		return
 	}
+
+	// Reload from disk to see entries from other sessions (web, parallel terminals)
+	kishHistory.reload()
 
 	n := 0
 	if len(fields) > 1 {

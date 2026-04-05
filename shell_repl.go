@@ -189,6 +189,8 @@ func handleBuiltin(line string) bool {
 	case "ki:clear":
 		kiConversation.Clear()
 		fmt.Fprintln(os.Stderr, "Conversation cleared.")
+	case "ki:skills":
+		fmt.Fprintln(os.Stdout, listSkills())
 	case "ki:disk":
 		fmt.Fprintln(os.Stdout, DiskUsage())
 	case "ki:status", "ki:costs", "ki:prompt", "ki:variant", "ki:audit", "ki:log",

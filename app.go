@@ -58,6 +58,7 @@ func runAll() error {
 	shellLog = newShellLog()
 	defer shellLog.Close()
 	rotateAllLogs()
+	initSkills()
 	initHistory()
 	defer closeHistory()
 	if len(cfg.MCP) > 0 {

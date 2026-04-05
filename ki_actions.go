@@ -143,6 +143,16 @@ func extractSSHCommand(command string) string {
 }
 
 func ExecuteAction(ctx context.Context, command string, timeout time.Duration) (string, string, int) {
+	// Skill expansion: skill:name → run the skill's script
+	if strings.HasPrefix(command, "skill:") {
+		skillName := strings.TrimPrefix(command, "skill:")
+		if skill := findSkill(skillName); skill != nil {
+			command = skill.Script
+		} else {
+			return "", fmt.Sprintf("skill '%s' not found\n", skillName), 1
+		}
+	}
+
 	if timeout == 0 {
 		timeout = 30 * time.Second
 	}

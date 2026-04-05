@@ -59,6 +59,10 @@ Deine Dateien:
   ~/.kish/vault/ (facts/, sessions/, scratch/)
   ~/.kish/completions/*.yaml, prompts.yaml`)
 
+	if sp := skillsForPrompt(); sp != "" {
+		parts = append(parts, "\n"+sp)
+	}
+
 	if customPrompt != "" {
 		parts = append(parts, "\nZusätzliche Anweisungen:\n"+customPrompt)
 	}

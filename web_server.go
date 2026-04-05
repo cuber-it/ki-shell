@@ -67,7 +67,8 @@ func startWebBackground(addr, token string, insecure bool) {
 	if insecure {
 		proto = "http"
 	}
-	fmt.Fprintf(os.Stderr, "[web] started on %s://%s (token: %s)\n", proto, addr, token)
+	hostname, _ := os.Hostname()
+	fmt.Fprintf(os.Stderr, "[web] started on %s://%s%s (token: %s)\n", proto, hostname, addr, token)
 }
 
 func stopWebBackground() {

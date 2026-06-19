@@ -254,7 +254,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 					}
 				}
 			} else {
-				fmt.Fprintln(hc.Stderr, "Cost tracking requires heinzel provider")
+				fmt.Fprintln(hc.Stderr, "Cost tracking requires an active KI provider")
 			}
 			return nil
 

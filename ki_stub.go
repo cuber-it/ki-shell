@@ -8,10 +8,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/cuber-it/heinzel-ai-core-go/provider"
+	"github.com/cuber-it/ki-shell/internal/llm"
 )
 
-var openaiPricing = map[string]provider.ModelPricing{
+var openaiPricing = map[string]llm.ModelPricing{
 	"gpt-4o":       {Input: 2.50, Output: 10.00},
 	"gpt-4o-mini":  {Input: 0.15, Output: 0.60},
 	"gpt-4.1":      {Input: 2.00, Output: 8.00},
@@ -22,7 +22,7 @@ var openaiPricing = map[string]provider.ModelPricing{
 	"o4-mini":      {Input: 1.10, Output: 4.40},
 }
 
-var anthropicPricing = map[string]provider.ModelPricing{
+var anthropicPricing = map[string]llm.ModelPricing{
 	"claude-sonnet-4-20250514":  {Input: 3.00, Output: 15.00},
 	"claude-opus-4-20250514":    {Input: 15.00, Output: 75.00},
 	"claude-haiku-4-5-20251001": {Input: 0.80, Output: 4.00},
@@ -39,7 +39,7 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 		if apiKey == "" {
 			return &StubKIEngine{reason: "openai: no API key (set OPENAI_API_KEY or ki.api_key)"}
 		}
-		provCfg := provider.ProviderConfig{
+		provCfg := llm.ProviderConfig{
 			Name:         "openai",
 			APIKey:       apiKey,
 			DefaultModel: cfg.KI.Model,
@@ -48,7 +48,7 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 		if cfg.KI.BaseURL != "" && cfg.KI.BaseURL != "http://localhost:11434" {
 			provCfg.APIBase = cfg.KI.BaseURL
 		}
-		return NewProviderEngine(provider.NewOpenAI(provCfg), provCfg)
+		return NewProviderEngine(llm.NewOpenAI(provCfg), provCfg)
 
 	case "anthropic":
 		if apiKey == "" {
@@ -57,13 +57,13 @@ func initKIEngine(cfg *KishConfig) KIEngine {
 		if apiKey == "" {
 			return &StubKIEngine{reason: "anthropic: no API key (set ANTHROPIC_API_KEY or ki.api_key)"}
 		}
-		provCfg := provider.ProviderConfig{
+		provCfg := llm.ProviderConfig{
 			Name:         "anthropic",
 			APIKey:       apiKey,
 			DefaultModel: cfg.KI.Model,
 			Pricing:      anthropicPricing,
 		}
-		return NewProviderEngine(provider.NewAnthropic(provCfg), provCfg)
+		return NewProviderEngine(llm.NewAnthropic(provCfg), provCfg)
 
 	case "":
 		return &StubKIEngine{reason: "no provider configured"}

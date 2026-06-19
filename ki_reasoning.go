@@ -2,7 +2,7 @@
 // Licensed under Apache 2.0.
 //
 // Agent-level reasoning: makes dumb models smarter by decomposing
-// the task before generating commands. Based on heinzel-ai reasoning addon.
+// the task before generating commands.
 package main
 
 import (

@@ -71,7 +71,7 @@ func WriteDefaultConfig() {
 	}
 
 	content := `# kish configuration
-# KI provider: ollama (local), openai, anthropic, heinzel, or empty (disabled)
+# KI provider: openai, anthropic, or empty (disabled)
 ki:
   provider: ""
   model: "llama3"

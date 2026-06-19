@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Provider layer (self-contained)
+- New `internal/llm` package: kish's own slim OpenAI + Anthropic layer (chat with SSE streaming + prompt/completion token usage) and SQLite usage DB (`modernc.org/sqlite`, pure Go) — replaces the external core provider dependency
+- Removed the `heinzel-ai-core-go` require and the `../heinzel` replace directive; kish now builds and runs anywhere (e.g. Acer) without a sibling repo
+- DB schema and `LogUsage`/`Stats`/`TodayStats`/`RecentRequests` kept identical, so existing `costs.db` files and the cost guard keep working unchanged
+- `KIEngine` interface and the fail-closed cost-guard pre-check are unchanged
+
 ### Cost-Guard (fail-closed)
 - New `cost_guard.go`: fail-closed cost control with hard per-run limit (tokens + USD), soft warning (80%), sparmode (90%, reduces max_tokens + shortens prompt), daily/monthly budget, and killswitch
 - Pre-call budget check in `ki_provider.go` Query: refuses the API call on any limit breach or unreadable usage/budget — never logs and continues

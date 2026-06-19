@@ -1,7 +1,7 @@
 // Copyright 2026 cuber IT service. Assisted by Claude Code (Anthropic).
 // Licensed under Apache 2.0.
-// Adapter between kish's KIEngine interface and heinzel's Provider library.
-// Uses github.com/cuber-it/heinzel-ai-core-go/provider for OpenAI, Anthropic, etc.
+// Adapter between kish's KIEngine interface and kish's own slim LLM layer
+// (internal/llm) for OpenAI and Anthropic. No external provider dependency.
 package main
 
 import (
@@ -13,25 +13,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cuber-it/heinzel-ai-core-go/provider"
+	"github.com/cuber-it/ki-shell/internal/llm"
 )
 
 type ProviderEngine struct {
-	provider          provider.Provider
+	provider          llm.Provider
 	model             string
-	db                *provider.DB
-	config            provider.ProviderConfig
+	db                *llm.DB
+	config            llm.ProviderConfig
 	sysPromptOverride string
 }
 
-func NewProviderEngine(p provider.Provider, cfg provider.ProviderConfig) *ProviderEngine {
+func NewProviderEngine(p llm.Provider, cfg llm.ProviderConfig) *ProviderEngine {
 	model := cfg.DefaultModel
 	if model == "" {
 		model = p.DefaultModel()
 	}
 
 	dbPath := filepath.Join(kishDir(), "costs.db")
-	db, err := provider.NewDB("file:"+dbPath, p.Name())
+	db, err := llm.NewDB("file:"+dbPath, p.Name())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "kish: cost db error: %s\n", err)
 	}
@@ -115,15 +115,15 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 	vSystemPrompt(sysPrompt)
 	vKIRequest(input)
 
-	var messages []provider.ChatMessage
-	messages = append(messages, provider.ChatMessage{Role: "system", Content: sysPrompt})
+	var messages []llm.ChatMessage
+	messages = append(messages, llm.ChatMessage{Role: "system", Content: sysPrompt})
 	for _, turn := range kiConversation.Recent() {
-		messages = append(messages, provider.ChatMessage{Role: "user", Content: turn.UserInput})
-		messages = append(messages, provider.ChatMessage{Role: "assistant", Content: turn.Response})
+		messages = append(messages, llm.ChatMessage{Role: "user", Content: turn.UserInput})
+		messages = append(messages, llm.ChatMessage{Role: "assistant", Content: turn.Response})
 	}
-	messages = append(messages, provider.ChatMessage{Role: "user", Content: input})
+	messages = append(messages, llm.ChatMessage{Role: "user", Content: input})
 
-	req := provider.ChatRequest{
+	req := llm.ChatRequest{
 		Model:    e.model,
 		Messages: messages,
 		Stream:   true,
@@ -131,9 +131,9 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 
 	start := time.Now()
 	var fullText strings.Builder
-	var usage provider.Usage
+	var usage llm.Usage
 
-	err = e.provider.ChatStream(req, func(chunk provider.StreamChunk) {
+	err = e.provider.ChatStream(req, func(chunk llm.StreamChunk) {
 		switch chunk.Type {
 		case "content_delta":
 			fmt.Fprint(out, chunk.Content)
@@ -204,7 +204,7 @@ func extractCommand(text string) string {
 	return cmd
 }
 
-func (e *ProviderEngine) TodayStats() *provider.UsageSummary {
+func (e *ProviderEngine) TodayStats() *llm.UsageSummary {
 	if e.db == nil {
 		return nil
 	}

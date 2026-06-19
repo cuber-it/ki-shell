@@ -39,6 +39,19 @@ body { background: var(--bg); color: var(--fg); font-family: monospace; height: 
 #login input { background: var(--bg2); border: 1px solid var(--border); color: var(--fg); padding: 8px 12px; font-size: 16px; font-family: monospace; width: 300px; outline: none; }
 #login button { background: var(--bg2); color: var(--accent); border: 1px solid var(--border); padding: 8px 16px; font-size: 14px; cursor: pointer; margin-top: 8px; }
 #login h2 { color: var(--accent); margin-bottom: 16px; }
+
+#budget-panel { width: 320px; background: var(--bg2); border-left: 1px solid var(--border); padding: 12px; overflow-y: auto; font-size: 13px; }
+#budget-panel.hidden { display: none; }
+#budget-panel h2 { font-size: 13px; color: var(--accent); margin-bottom: 10px; }
+#budget-panel label { display: block; margin: 8px 0 2px; color: var(--dim); font-size: 11px; }
+#budget-panel input[type="number"] { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 4px 6px; font-family: monospace; font-size: 13px; outline: none; }
+#budget-panel input:focus { border-color: var(--accent); }
+#budget-panel .kill-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+#budget-panel button { background: var(--bg); color: var(--accent); border: 1px solid var(--border); padding: 6px 12px; cursor: pointer; margin-top: 12px; width: 100%; font-family: monospace; }
+#budget-panel .usage { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--dim); font-size: 12px; line-height: 1.6; }
+#budget-panel .save-status { font-size: 11px; margin-top: 6px; min-height: 14px; }
+#budget-panel .save-status.ok { color: var(--ok); }
+#budget-panel .save-status.err { color: var(--err); }
 </style>
 </head>
 <body>
@@ -56,6 +69,7 @@ body { background: var(--bg); color: var(--fg); font-family: monospace; height: 
   <h1>kish</h1>
   <div>
     <button class="toggle-btn active" onclick="toggleKI()">KI</button>
+    <button class="toggle-btn" id="budget-toggle" onclick="toggleBudget()">Budget</button>
     <select id="theme-select" onchange="setTheme(this.value)">
       <option value="dark">Dark</option>
       <option value="sepia">Sepia</option>
@@ -74,6 +88,28 @@ body { background: var(--bg); color: var(--fg); font-family: monospace; height: 
       <input type="text" id="ki-query" placeholder="ki: ask something..." onkeydown="if(event.key==='Enter')sendKI()">
       <button onclick="sendKI()">Send</button>
     </div>
+  </div>
+  <div id="budget-panel" class="hidden">
+    <h2>Cost Budget</h2>
+    <label>Monatslimit ($)</label>
+    <input type="number" step="0.01" min="0" id="b-month">
+    <label>Tageslimit ($)</label>
+    <input type="number" step="0.01" min="0" id="b-day">
+    <label>Limit pro Run ($)</label>
+    <input type="number" step="0.01" min="0" id="b-run">
+    <label>Token pro Run</label>
+    <input type="number" step="1" min="0" id="b-tokens-run">
+    <label>Token pro Tag</label>
+    <input type="number" step="1" min="0" id="b-tokens-day">
+    <label>Rückfrage ab ($)</label>
+    <input type="number" step="0.01" min="0" id="b-confirm">
+    <div class="kill-row">
+      <input type="checkbox" id="b-killswitch">
+      <label for="b-killswitch" style="margin:0;color:var(--err)">Killswitch (Hard-Stop alle KI-Calls)</label>
+    </div>
+    <button onclick="saveBudget()">Speichern</button>
+    <div id="budget-save-status" class="save-status"></div>
+    <div class="usage" id="budget-usage">—</div>
   </div>
 </div>
 
@@ -185,6 +221,72 @@ async function initStatus() {
     document.getElementById('info-memory').textContent = 'Memory: ' + (data.memories || 0) + ' facts';
     document.getElementById('info-cost').textContent = 'Cost: $' + (data.cost_today || '0.0000');
   } catch(e) {}
+}
+
+function toggleBudget() {
+  const panel = document.getElementById('budget-panel');
+  const btn = document.getElementById('budget-toggle');
+  panel.classList.toggle('hidden');
+  btn.classList.toggle('active');
+  if (!panel.classList.contains('hidden')) loadBudget();
+}
+
+async function loadBudget() {
+  const status = document.getElementById('budget-save-status');
+  status.textContent = ''; status.className = 'save-status';
+  try {
+    const resp = await fetch('/api/costs', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await resp.json();
+    const lim = data.limits || {};
+    document.getElementById('b-month').value = lim.month ?? '';
+    document.getElementById('b-day').value = lim.day ?? '';
+    document.getElementById('b-run').value = lim.run ?? '';
+    document.getElementById('b-tokens-run').value = lim.tokens_run ?? '';
+    document.getElementById('b-tokens-day').value = lim.tokens_day ?? '';
+    document.getElementById('b-confirm').value = lim.confirm ?? '';
+    document.getElementById('b-killswitch').checked = !!data.killswitch;
+    const usage = document.getElementById('budget-usage');
+    let html = '';
+    if (data.budget_error) html += '<div style="color:var(--err)">budget.json: ' + escHtml(data.budget_error) + '</div>';
+    if (data.today) html += 'Heute: $' + (data.today.cost_usd ?? 0).toFixed(4) + '<br>';
+    if (data.total_cost != null) html += 'Gesamt: $' + data.total_cost.toFixed(4) + ' (' + (data.total_requests||0) + ' req)';
+    usage.innerHTML = html || '—';
+  } catch(e) {
+    status.textContent = 'Laden fehlgeschlagen: ' + e; status.className = 'save-status err';
+  }
+}
+
+function numOrNull(id) {
+  const v = document.getElementById(id).value;
+  return v === '' ? null : Number(v);
+}
+
+async function saveBudget() {
+  const status = document.getElementById('budget-save-status');
+  const body = {
+    month: numOrNull('b-month'),
+    day: numOrNull('b-day'),
+    run: numOrNull('b-run'),
+    tokens_run: numOrNull('b-tokens-run'),
+    tokens_day: numOrNull('b-tokens-day'),
+    confirm: numOrNull('b-confirm'),
+    killswitch: document.getElementById('b-killswitch').checked,
+  };
+  try {
+    const resp = await fetch('/api/costs', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.status === 'saved') {
+      status.textContent = 'Gespeichert'; status.className = 'save-status ok';
+    } else {
+      status.textContent = data.error || 'Fehler'; status.className = 'save-status err';
+    }
+  } catch(e) {
+    status.textContent = 'Speichern fehlgeschlagen: ' + e; status.className = 'save-status err';
+  }
 }
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

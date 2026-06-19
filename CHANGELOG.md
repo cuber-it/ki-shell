@@ -16,6 +16,8 @@
 - New builtins `ki:budget` (show / set month|day|run|tokens-run|tokens-day / confirm) and `ki:killswitch on|off`
 - `ki:costs` extended: consumption vs. budget (% used, remaining) for day and month
 - Unit tests for every guard level plus fail-closed failure paths
+- Prompt budget indicator: dezent at >= 80% monthly budget (`⚠$`), loud on killswitch or a reached hard limit (`⛔budget`), nothing below 80%
+- Web budget panel: `/api/costs` now also returns limits + killswitch and accepts POST to edit them (writes `~/.kish/budget.json`); editable panel in the web UI with live usage
 
 ## v0.2.0 — 2026-04-05
 

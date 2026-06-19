@@ -11,6 +11,61 @@ import (
 	"github.com/cuber-it/ki-shell/kish-sh/v3/interp"
 )
 
+// budgetLevel classifies the current budget state for the prompt indicator.
+type budgetLevel int
+
+const (
+	budgetOK    budgetLevel = iota // below 80% — nothing to show
+	budgetWarn                     // >= 80% monthly budget — gentle warning
+	budgetBlock                    // killswitch on OR a hard limit reached — loud warning
+)
+
+// budgetStatus inspects budget.json + current usage and returns the prompt-level
+// state. It is intentionally best-effort and side-effect-free: it must never
+// block the prompt. On any error reading budget/usage it returns budgetBlock,
+// because an unreadable budget means the cost guard is failing closed and the
+// next KI call would be refused — the user should see that in the prompt.
+func budgetStatus() budgetLevel {
+	ov, err := loadBudgetOverrides()
+	if err != nil {
+		return budgetBlock
+	}
+	if ov.Killswitch != nil && *ov.Killswitch {
+		return budgetBlock
+	}
+
+	limits := effectiveLimits(kiConfig, ov)
+
+	pe, ok := kiEngine.(*ProviderEngine)
+	if !ok {
+		return budgetOK
+	}
+
+	// Month (lifetime total per usageAdapter convention) vs monthly USD ceiling.
+	_, _, _, monthCost := pe.TotalStats()
+	if limits.HardUsdPerMonth > 0 {
+		if monthCost >= limits.HardUsdPerMonth {
+			return budgetBlock
+		}
+		if monthCost >= limits.HardUsdPerMonth*0.8 {
+			return budgetWarn
+		}
+	}
+
+	// Daily ceilings can also hard-stop the next call.
+	if today := pe.TodayStats(); today != nil {
+		if limits.HardUsdPerDay > 0 && today.Cost >= limits.HardUsdPerDay {
+			return budgetBlock
+		}
+		dayTokens := today.InputTokens + today.OutputTokens
+		if limits.HardTokensPerDay > 0 && dayTokens >= limits.HardTokensPerDay {
+			return budgetBlock
+		}
+	}
+
+	return budgetOK
+}
+
 func budgetPct(used, limit float64) int {
 	if limit <= 0 {
 		return 0

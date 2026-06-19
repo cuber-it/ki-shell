@@ -301,18 +301,106 @@ func handleAPIHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAPICosts(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		handleAPICostsUpdate(w, r)
+		return
+	}
+
 	ensureKIEngine()
+
+	// Limits + killswitch always reflect budget.json (UI-editable). On a
+	// corrupt/unreadable budget.json report it instead of silently showing
+	// defaults — the cost guard would fail closed anyway.
+	ov, ovErr := loadBudgetOverrides()
+	limits := effectiveLimits(kiConfig, ov)
+	kill := ov.Killswitch != nil && *ov.Killswitch
+
+	resp := map[string]interface{}{
+		"limits": map[string]interface{}{
+			"month":      limits.HardUsdPerMonth,
+			"day":        limits.HardUsdPerDay,
+			"run":        limits.HardUsdPerRun,
+			"tokens_run": limits.HardTokensPerRun,
+			"tokens_day": limits.HardTokensPerDay,
+			"confirm":    limits.ConfirmAboveUsd,
+		},
+		"killswitch": kill,
+	}
+	if ovErr != nil {
+		resp["budget_error"] = ovErr.Error()
+	}
+
 	if pe, ok := kiEngine.(*ProviderEngine); ok {
 		today := pe.TodayStats()
 		reqs, tokIn, tokOut, cost := pe.TotalStats()
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"today":         today,
-			"total_requests": reqs, "total_input_tokens": tokIn,
-			"total_output_tokens": tokOut, "total_cost": cost,
-		})
-	} else {
-		json.NewEncoder(w).Encode(map[string]string{"error": "no cost tracking"})
+		resp["today"] = today
+		resp["total_requests"] = reqs
+		resp["total_input_tokens"] = tokIn
+		resp["total_output_tokens"] = tokOut
+		resp["total_cost"] = cost
 	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+// handleAPICostsUpdate persists edited limits + killswitch to ~/.kish/budget.json.
+// Only fields present in the request body are changed; omitted fields keep their
+// stored value. Fail-closed semantics are preserved: on read/write error the
+// existing budget is left untouched and an error is reported.
+func handleAPICostsUpdate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Month      *float64 `json:"month"`
+		Day        *float64 `json:"day"`
+		Run        *float64 `json:"run"`
+		TokensRun  *int     `json:"tokens_run"`
+		TokensDay  *int64   `json:"tokens_day"`
+		Confirm    *float64 `json:"confirm"`
+		Killswitch *bool    `json:"killswitch"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid body: " + err.Error()})
+		return
+	}
+
+	ov, err := loadBudgetOverrides()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "budget.json unreadable: " + err.Error()})
+		return
+	}
+
+	if req.Month != nil {
+		ov.MaxUsdPerMonth = req.Month
+	}
+	if req.Day != nil {
+		ov.MaxUsdPerDay = req.Day
+	}
+	if req.Run != nil {
+		ov.MaxUsdPerRun = req.Run
+	}
+	if req.Confirm != nil {
+		ov.ConfirmAboveUsd = req.Confirm
+	}
+	if req.TokensRun != nil {
+		ov.MaxTokensPerRun = req.TokensRun
+		soft := *req.TokensRun * 80 / 100
+		spar := *req.TokensRun * 90 / 100
+		ov.SoftTokensPerRun = &soft
+		ov.SparmodeTokens = &spar
+	}
+	if req.TokensDay != nil {
+		ov.MaxTokensPerDay = req.TokensDay
+	}
+	if req.Killswitch != nil {
+		ov.Killswitch = req.Killswitch
+	}
+
+	if err := saveBudgetOverrides(ov); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "budget.json write failed: " + err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 }
 
 func handleAPIMemory(w http.ResponseWriter, r *http.Request) {

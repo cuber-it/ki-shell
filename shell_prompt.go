@@ -13,14 +13,35 @@ import (
 var lastExitCode int
 
 func buildPrompt() string {
-	// KISH_PS1 overrides, then PS1, then default
-	if ps1 := os.Getenv("KISH_PS1"); ps1 != "" {
-		return expandPS1(ps1)
+	// KISH_PS1 overrides, then PS1, then default. A budget indicator is
+	// prepended to whichever prompt is used (dezent unter 80 %, deutlich bei
+	// Killswitch/Hard-Limit).
+	var base string
+	switch {
+	case os.Getenv("KISH_PS1") != "":
+		base = expandPS1(os.Getenv("KISH_PS1"))
+	case os.Getenv("PS1") != "":
+		base = expandPS1(os.Getenv("PS1"))
+	default:
+		base = defaultPrompt()
 	}
-	if ps1 := os.Getenv("PS1"); ps1 != "" {
-		return expandPS1(ps1)
+	return budgetIndicator() + base
+}
+
+// budgetIndicator renders a small, source-of-truth budget marker for the prompt.
+// Under 80 % it returns "" (unaufdringlich). At >= 80 % monthly budget it shows a
+// gentle warning; on killswitch or a reached hard limit a loud one.
+func budgetIndicator() string {
+	switch budgetStatus() {
+	case budgetWarn:
+		// dim yellow warning sign + $
+		return "\033[33m⚠$\033[0m "
+	case budgetBlock:
+		// bold red stop sign
+		return "\033[1;31m⛔budget\033[0m "
+	default:
+		return ""
 	}
-	return defaultPrompt()
 }
 
 // lightBackground returns true if COLORFGBG or KISH_THEME suggest a light background.

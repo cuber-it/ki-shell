@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Cost-Guard (fail-closed)
+- New `cost_guard.go`: fail-closed cost control with hard per-run limit (tokens + USD), soft warning (80%), sparmode (90%, reduces max_tokens + shortens prompt), daily/monthly budget, and killswitch
+- Pre-call budget check in `ki_provider.go` Query: refuses the API call on any limit breach or unreadable usage/budget — never logs and continues
+- Audit trail of every check and block in `~/.kish/cost_audit.jsonl`
+- Budget overrides + killswitch persisted in `~/.kish/budget.json`; layered defaults < config.yaml < budget.json
+- New builtins `ki:budget` (show / set month|day|run|tokens-run|tokens-day / confirm) and `ki:killswitch on|off`
+- `ki:costs` extended: consumption vs. budget (% used, remaining) for day and month
+- Unit tests for every guard level plus fail-closed failure paths
+
 ## v0.2.0 — 2026-04-05
 
 ### Web UI

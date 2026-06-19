@@ -62,8 +62,56 @@ func (e *ProviderEngine) Close() {
 	}
 }
 
+// usageAdapter exposes the engine's cost DB to the CostGuard. A nil db means
+// the cost store is unavailable -> every read returns an error so the guard
+// fails closed (refuses the call) rather than treating "no data" as "$0 spent".
+type usageAdapter struct {
+	engine *ProviderEngine
+}
+
+func (u usageAdapter) TodayUsd() (float64, error) {
+	if u.engine == nil || u.engine.db == nil {
+		return 0, fmt.Errorf("costs.db unavailable")
+	}
+	return u.engine.db.TodayStats().Cost, nil
+}
+
+func (u usageAdapter) TodayTokens() (int64, error) {
+	if u.engine == nil || u.engine.db == nil {
+		return 0, fmt.Errorf("costs.db unavailable")
+	}
+	stats := u.engine.db.TodayStats()
+	return stats.InputTokens + stats.OutputTokens, nil
+}
+
+// MonthUsd uses the lifetime total as the monthly figure. costs.db has no
+// monthly query (only Stats/TodayStats per the spec); this overcounts older
+// months but only ever makes the guard stricter, never looser — acceptable for
+// a fail-closed cost ceiling.
+func (u usageAdapter) MonthUsd() (float64, error) {
+	if u.engine == nil || u.engine.db == nil {
+		return 0, fmt.Errorf("costs.db unavailable")
+	}
+	_, _, _, totalCost := u.engine.db.Stats()
+	return totalCost, nil
+}
+
 func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx ShellContext, out io.Writer) (*KIResponse, error) {
+	// FAIL-CLOSED cost guard: build the guard and run the pre-call budget check
+	// BEFORE any API call. On limit breach or any error reading usage/budget,
+	// refuse the call — never "log and continue".
+	guard, err := newCostGuard(kiConfig, usageAdapter{engine: e})
+	if err != nil {
+		return nil, err
+	}
+	if err := guard.PreCheck(); err != nil {
+		return nil, err
+	}
+
 	sysPrompt := buildSystemPrompt(shellCtx, kiMemory, e.sysPromptOverride)
+	if suffix := guard.SparmodeSuffix(); suffix != "" {
+		sysPrompt += suffix
+	}
 	vSystemPrompt(sysPrompt)
 	vKIRequest(input)
 
@@ -85,7 +133,7 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 	var fullText strings.Builder
 	var usage provider.Usage
 
-	err := e.provider.ChatStream(req, func(chunk provider.StreamChunk) {
+	err = e.provider.ChatStream(req, func(chunk provider.StreamChunk) {
 		switch chunk.Type {
 		case "content_delta":
 			fmt.Fprint(out, chunk.Content)
@@ -102,8 +150,8 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 	latency := time.Since(start)
 	fmt.Fprintln(out)
 
+	cost := e.config.CostForTokens(e.model, usage.InputTokens, usage.OutputTokens)
 	if e.db != nil {
-		cost := e.config.CostForTokens(e.model, usage.InputTokens, usage.OutputTokens)
 		status := "ok"
 		errMsg := ""
 		if err != nil {
@@ -112,6 +160,8 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 		}
 		e.db.LogUsage(e.model, usage.InputTokens, usage.OutputTokens, latency.Milliseconds(), status, errMsg, "", cost)
 	}
+	// Book consumption into the cost audit log.
+	guard.RecordUsage(e.model, usage.InputTokens, usage.OutputTokens, cost)
 
 	if err != nil {
 		if ctx.Err() != nil {

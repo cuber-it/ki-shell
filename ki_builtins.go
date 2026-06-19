@@ -217,17 +217,31 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				today := pe.TodayStats()
 				reqs, tokIn, tokOut, totalCost := pe.TotalStats()
 				fmt.Fprintf(hc.Stdout, "Provider:  %s\n", kiEngine.Name())
+
+				ov, _ := loadBudgetOverrides()
+				limits := effectiveLimits(kiConfig, ov)
+
 				if today != nil {
+					todayTokens := today.InputTokens + today.OutputTokens
 					fmt.Fprintf(hc.Stdout, "\nHeute:\n")
 					fmt.Fprintf(hc.Stdout, "  Requests:  %d\n", today.Requests)
 					fmt.Fprintf(hc.Stdout, "  Tokens:    %d in / %d out\n", today.InputTokens, today.OutputTokens)
-					fmt.Fprintf(hc.Stdout, "  Kosten:    $%.4f\n", today.Cost)
+					fmt.Fprintf(hc.Stdout, "  Kosten:    $%.4f / $%.2f  (%d%% ausgeschoepft, $%.4f verbleibend)\n",
+						today.Cost, limits.HardUsdPerDay,
+						budgetPct(today.Cost, limits.HardUsdPerDay),
+						remaining(limits.HardUsdPerDay, today.Cost))
+					fmt.Fprintf(hc.Stdout, "  Token-Tag: %d / %d  (%d%% ausgeschoepft)\n",
+						todayTokens, limits.HardTokensPerDay,
+						budgetPctInt(todayTokens, limits.HardTokensPerDay))
 					fmt.Fprintf(hc.Stdout, "  Latenz:    %.0fms avg\n", today.AvgLatency)
 				}
-				fmt.Fprintf(hc.Stdout, "\nGesamt:\n")
+				fmt.Fprintf(hc.Stdout, "\nGesamt (Monatsbudget):\n")
 				fmt.Fprintf(hc.Stdout, "  Requests:  %d\n", reqs)
 				fmt.Fprintf(hc.Stdout, "  Tokens:    %d in / %d out\n", tokIn, tokOut)
-				fmt.Fprintf(hc.Stdout, "  Kosten:    $%.4f\n", totalCost)
+				fmt.Fprintf(hc.Stdout, "  Kosten:    $%.4f / $%.2f  (%d%% ausgeschoepft, $%.4f verbleibend)\n",
+					totalCost, limits.HardUsdPerMonth,
+					budgetPct(totalCost, limits.HardUsdPerMonth),
+					remaining(limits.HardUsdPerMonth, totalCost))
 
 				recent := pe.RecentRequests(5)
 				if len(recent) > 0 {
@@ -243,6 +257,12 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				fmt.Fprintln(hc.Stderr, "Cost tracking requires heinzel provider")
 			}
 			return nil
+
+		case "ki:budget":
+			return handleBudgetCmd(hc.Stdout, hc.Stderr, args[1:])
+
+		case "ki:killswitch":
+			return handleKillswitchCmd(hc.Stdout, hc.Stderr, args[1:])
 
 		case "ki:variant":
 			if len(args) < 2 {

@@ -23,7 +23,7 @@ type PromptABConfig struct {
 }
 
 func LoadPromptVariants() []PromptVariant {
-	path := filepath.Join(kishDir(), "prompts.yaml")
+	path := filepath.Join(aishDir(), "prompts.yaml")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
@@ -46,7 +46,7 @@ func ActivePromptVariant() string {
 }
 
 func WriteDefaultPromptVariants() {
-	path := filepath.Join(kishDir(), "prompts.yaml")
+	path := filepath.Join(aishDir(), "prompts.yaml")
 	if fileExists(path) {
 		return
 	}
@@ -81,7 +81,7 @@ variants:
 }
 
 func SwitchVariant(name string) error {
-	path := filepath.Join(kishDir(), "prompts.yaml")
+	path := filepath.Join(aishDir(), "prompts.yaml")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

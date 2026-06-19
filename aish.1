@@ -1,17 +1,23 @@
-.TH KISH 1 "April 2026" "kish 0.1.0" "User Commands"
+.TH AISH 1 "June 2026" "aish 0.1.0" "User Commands"
 .SH NAME
-kish \- the KI shell
+aish \- the AI shell with enforced cost governance
 .SH SYNOPSIS
-.B kish
+.B aish
 [\fIOPTIONS\fR] [\fISCRIPT\fR [\fIARGS\fR...]]
 .SH DESCRIPTION
-kish is a bash-compatible shell with native AI integration. It combines a full
-POSIX shell (based on mvdan/sh) with an AI engine (OpenAI) that can be invoked
-via the @ki prefix.
+aish is a bash-compatible shell with native AI integration and enforced,
+fail-closed cost governance. It combines a full POSIX shell (based on mvdan/sh)
+with an AI engine (OpenAI/Anthropic) that can be invoked via the @ki prefix.
 .PP
-Without @ki, kish behaves exactly like bash. With @ki, it sends queries to the
+Without @ki, aish behaves exactly like bash. With @ki, it sends queries to the
 configured AI provider and can execute commands autonomously (read-only) or with
-user confirmation (write operations).
+user confirmation (write operations). Every AI call passes a fail-closed cost
+guard first: token/USD per-run, daily and monthly budgets, and a killswitch.
+.PP
+.B Compatibility:
+aish was formerly named kish. The command \fBkish\fR is kept as a
+backward-compatible alias, and a pre-existing \fI~/.kish\fR config directory is
+migrated to \fI~/.aish\fR on first start (nothing is lost).
 .SH OPTIONS
 .TP
 .B \-c \fIcommand\fR
@@ -27,7 +33,7 @@ Act as a login shell. Reads /etc/profile and ~/.profile.
 Verbose output for AI operations. 0=quiet (default), 1=show actions, 2=full debug.
 .TP
 .B \-\-norc
-Do not read ~/.kishrc, ~/.bashrc, or /etc/bash.bashrc.
+Do not read ~/.aishrc, ~/.bashrc, or /etc/bash.bashrc.
 .TP
 .B \-\-noprofile
 Do not read /etc/profile, ~/.bash_profile, or ~/.profile.
@@ -40,7 +46,8 @@ Show help and exit.
 .TP
 .B \-\-web \fIaddr\fR
 Start web UI on the given address (e.g. :12080). Provides a browser-based terminal
-with KI panel, REST API, and token authentication. TLS is enabled by default.
+with KI panel, an editable cost-budget panel, REST API, and token authentication.
+TLS is enabled by default.
 .TP
 .B \-\-token \fIstr\fR
 Set authentication token for the web UI. If omitted, a random token is generated and printed.
@@ -59,6 +66,12 @@ Quick context query. Without arguments, analyzes the last command and its output
 .B ki:status
 Show AI engine status, memory count, and permissions.
 .TP
+.B ki:budget [set month|day|run|tokens-run|tokens-day \fIvalue\fR | confirm \fIvalue\fR]
+Show or set cost limits. Persisted in ~/.aish/budget.json.
+.TP
+.B ki:killswitch on|off
+Hard-stop all AI calls (or release the stop).
+.TP
 .B ki:log [\fIn\fR]
 Show last \fIn\fR shell log entries (default 20).
 .TP
@@ -72,13 +85,13 @@ Show last \fIn\fR audit log entries (default 20).
 Reset conversation history.
 .TP
 .B ki:skills
-List available skills (predefined scripts in ~/.kish/skills/).
+List available skills (predefined scripts in ~/.aish/skills/).
 .TP
 .B ki:disk
-Show disk usage of ~/.kish/ directory.
+Show disk usage of ~/.aish/ directory.
 .TP
 .B ki:costs
-Show API cost tracking (today, total, recent requests).
+Show API cost tracking (today, total, recent requests) versus budget.
 .TP
 .B showmemory [\fIfilter\fR]
 Show persistent memory vault. Filter: \fBfacts\fR, \fBsessions\fR, \fBscratch\fR. Without filter: all categories.
@@ -94,8 +107,26 @@ Search persistent memory. Also: \fBerinnere\fR.
 .TP
 .B forget \fIkey\fR
 Delete a fact from memory. Also: \fBvergiss\fR.
+.SH COST GOVERNANCE
+Every AI call is gated by a fail-closed cost guard:
+.RS
+.TP
+.B Per-run
+Hard token/USD ceiling, soft warning at 80%, economy mode at 90%.
+.TP
+.B Daily / monthly
+USD and token budgets; the call is refused once a ceiling is reached.
+.TP
+.B Killswitch
+Hard-stop for all AI calls, persisted across restarts.
+.RE
+.PP
+The interactive prompt shows a discreet indicator at >= 80% of the monthly
+budget (\fB\(rs\fR) and a loud one on killswitch or a reached hard limit
+(\fB\(rs budget\fR). Limits live in ~/.aish/budget.json and can be edited via
+\fBki:budget\fR or the web budget panel.
 .SH SECURITY
-kish uses a layered permission system for AI operations:
+aish uses a layered permission system for AI operations:
 .PP
 .B Action Levels:
 .RS
@@ -110,7 +141,7 @@ Write operations (rm, mv, git push) require user confirmation [j/n/e].
 AI cannot modify its own configuration (only hardcoded block).
 .RE
 .PP
-All AI actions are logged to ~/.kish/audit.log. Secrets in shell output are
+All AI actions are logged to ~/.aish/audit.log. Secrets in shell output are
 scrubbed before logging (API keys, passwords, JWTs, SSH keys).
 .PP
 Rate limiting: 20 queries/minute, 200 queries/hour (configurable).
@@ -119,62 +150,71 @@ The AI is only active when explicitly invoked via @ki. Shell commands without
 @ki bypass the AI entirely.
 .SH FILES
 .TP
-.B ~/.kish/config.yaml
+.B ~/.aish/config.yaml
 AI provider configuration (provider, model, API key, prefix).
 .TP
-.B ~/.kish/permissions.yaml
+.B ~/.aish/budget.json
+Cost limits and killswitch (UI-editable). Highest-priority override layer.
+.TP
+.B ~/.aish/permissions.yaml
 Security settings (action levels, blocked commands, context filtering).
 .TP
-.B ~/.kish/kishrc
+.B ~/.aishrc
 Shell startup file (aliases, functions, variables). Read on interactive startup.
 .TP
-.B ~/.kish/profile
+.B ~/.aish/profile
 Login profile. Read on login shell startup (after /etc/profile).
 .TP
-.B ~/.kish/history
+.B ~/.aish/history
 Command history (readline, 10000 entries).
 .TP
-.B ~/.kish/shell.log
+.B ~/.aish/shell.log
 Persistent activity log with command output. Secret-scrubbed. Rotation at 5MB.
 .TP
-.B ~/.kish/audit.log
+.B ~/.aish/audit.log
 AI action audit trail. Append-only. Rotation at 10MB.
 .TP
-.B ~/.kish/vault/
+.B ~/.aish/cost_audit.jsonl
+Cost-guard audit trail: every check, warning, and block.
+.TP
+.B ~/.aish/vault/
 Persistent AI memory. Subdirectories: fact/, session/, scratch/.
 .TP
-.B ~/.kish/completions/*.yaml
+.B ~/.aish/completions/*.yaml
 YAML-based tab completion specs for individual commands.
 .TP
-.B .kishrc
+.B .aishrc
 Project-local startup file. Read when entering a directory with this file.
+.PP
+A legacy \fI~/.kish\fR directory (and \fI~/.kishrc\fR, \fI.kishrc\fR) is migrated
+to the \fI~/.aish\fR equivalents on first start and still honored as a fallback.
 .SH STARTUP FILES
 .B Login shell:
-/etc/profile \(-> ~/.bash_profile | ~/.bash_login | ~/.profile \(-> ~/.kish/profile
+/etc/profile \(-> ~/.bash_profile | ~/.bash_login | ~/.profile \(-> ~/.aish/profile
 .PP
 .B Interactive shell:
-/etc/kish.kishrc | /etc/bash.bashrc \(-> ~/.kishrc | ~/.bashrc \(-> ./.kishrc
+/etc/aish.aishrc | /etc/bash.bashrc \(-> ~/.aishrc | ~/.bashrc \(-> ./.aishrc
 .SH ENVIRONMENT
 .TP
 .B OPENAI_API_KEY
 API key for OpenAI provider.
 .TP
 .B ANTHROPIC_API_KEY
-API key for Anthropic provider (planned).
+API key for Anthropic provider.
 .TP
 .B PS1
 Shell prompt string (bash-compatible). Supported escapes: \\u \\h \\H \\w \\W \\$ \\n \\t \\A \\d \\j \\? \\e \\[ \\].
 .TP
 .B KISH_PS1
-Overrides PS1. If neither is set, a default prompt with git branch and exit code is used.
+Overrides PS1. If neither is set, a default prompt with git branch and exit code is used. (Name kept for backward compatibility.)
 .TP
 .B KISH_GOD_MODE=yes
-Disable all hardcoded safety checks. Use at your own risk.
+Disable all hardcoded safety checks. Use at your own risk. (Name kept for backward compatibility.)
 .SH COMPLETION SPECS
 Tab completions for specific commands are defined in YAML files:
 .PP
 .nf
-# ~/.kish/completions/git.yaml
+# ~/.aish/completions/git.yaml
 subcommands:
   - checkout
   - commit
@@ -186,25 +226,25 @@ args:
 .SH EXAMPLES
 .nf
 # Interactive shell
-kish
+aish
 
 # Run a command
-kish -c 'echo hello'
+aish -c 'echo hello'
 
 # Ask AI
-kish -c '@ki what does this error mean'
+aish -c '@ki what does this error mean'
 
 # Run script with arguments
-kish script.sh arg1 arg2
+aish script.sh arg1 arg2
 
 # Debug AI operations
-kish -v 2
+aish -v 2
 
 # Pipe to AI
-echo "error log" | kish -c 'ki "summarize"'
+echo "error log" | aish -c 'ki "summarize"'
 .fi
 .SH BUGS
-Report bugs at https://github.com/cuber-it/kish/issues
+Report bugs at https://github.com/cuber-it/ki-shell/issues
 .SH SEE ALSO
 .BR bash (1),
 .BR sh (1),

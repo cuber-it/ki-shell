@@ -48,7 +48,7 @@ func newCompleter() *kishCompleter {
 }
 
 func (c *kishCompleter) loadSpecs() {
-	dir := filepath.Join(kishDir(), "completions")
+	dir := filepath.Join(aishDir(), "completions")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return

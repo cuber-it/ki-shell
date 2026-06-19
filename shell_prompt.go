@@ -93,7 +93,7 @@ func defaultPrompt() string {
 		gitPart = fmt.Sprintf(" %s(%s)%s", cGit, branch, reset)
 	}
 
-	return fmt.Sprintf("%s %skish%s %s%s $ ", exitIndicator, cName, reset, cwd, gitPart)
+	return fmt.Sprintf("%s %saish%s %s%s $ ", exitIndicator, cName, reset, cwd, gitPart)
 }
 
 func expandPS1(ps1 string) string {

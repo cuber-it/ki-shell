@@ -7,11 +7,13 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/term"
 
@@ -116,25 +118,41 @@ func loadStartupFiles(runner *interp.Runner, stderrFilter *FilterWriter, interac
 		} else {
 			sourceIfExists(runner, expandHome("~/.profile"))
 		}
-		sourceIfExists(runner, expandHome("~/.kish/profile"))
+		if fileExists(expandHome("~/.aish/profile")) {
+			sourceIfExists(runner, expandHome("~/.aish/profile"))
+		} else {
+			sourceIfExists(runner, expandHome("~/.kish/profile")) // legacy
+		}
 	}
 
 	if interactive && !*flagNoRC {
 		stderrFilter.SetSuppress(true)
 
-		sourceIfExists(runner, "/etc/kish.kishrc")
-		if !fileExists("/etc/kish.kishrc") {
+		switch {
+		case fileExists("/etc/aish.aishrc"):
+			sourceIfExists(runner, "/etc/aish.aishrc")
+		case fileExists("/etc/kish.kishrc"): // legacy
+			sourceIfExists(runner, "/etc/kish.kishrc")
+		default:
 			sourceIfExists(runner, "/etc/bash.bashrc")
 		}
-		if fileExists(expandHome("~/.kishrc")) {
-			sourceIfExists(runner, expandHome("~/.kishrc"))
-		} else {
+
+		userRC := expandHome("~/.aishrc")
+		switch {
+		case fileExists(userRC):
+			sourceIfExists(runner, userRC)
+		case fileExists(expandHome("~/.kishrc")): // legacy
+			userRC = expandHome("~/.kishrc")
+			sourceIfExists(runner, userRC)
+		default:
 			sourceIfExists(runner, expandHome("~/.bashrc"))
 		}
+
 		cwd, _ := os.Getwd()
-		localRC := filepath.Join(cwd, ".kishrc")
-		if fileExists(localRC) && localRC != expandHome("~/.kishrc") {
+		if localRC := filepath.Join(cwd, ".aishrc"); fileExists(localRC) && localRC != userRC {
 			sourceIfExists(runner, localRC)
+		} else if localRC := filepath.Join(cwd, ".kishrc"); fileExists(localRC) && localRC != userRC {
+			sourceIfExists(runner, localRC) // legacy
 		}
 
 		stderrFilter.SetSuppress(false)
@@ -214,12 +232,108 @@ func execEnv(env expand.Environ) []string {
 	return result
 }
 
-func kishDir() string {
+var aishDirOnce sync.Once
+
+// aishDir returns the aish config/state directory (~/.aish), creating it if
+// needed. On first call it transparently migrates a pre-existing legacy ~/.kish
+// directory (config.yaml, costs.db, budget.json, history, audit logs, …) so no
+// data is lost across the kish→aish rebrand.
+func aishDir() string {
 	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".kish")
+	dir := filepath.Join(home, ".aish")
+	aishDirOnce.Do(func() { migrateLegacyKishDir(home, dir) })
 	os.MkdirAll(dir, 0755)
 	return dir
 }
+
+// migrateLegacyKishDir moves ~/.kish to ~/.aish when ~/.aish does not yet exist
+// and ~/.kish does. Failure-mode reasoning:
+//   - target ~/.aish already present  -> do nothing (never overwrite live data)
+//   - legacy ~/.kish absent            -> nothing to migrate
+//   - both present                     -> ~/.aish wins, leave ~/.kish untouched
+//   - rename across filesystems fails  -> fall back to a recursive copy, leaving
+//     the legacy dir in place so nothing is destroyed if the copy is partial
+//
+// A rename is atomic on the same filesystem, so on success the data is never in
+// a half-migrated state.
+func migrateLegacyKishDir(home, target string) {
+	if _, err := os.Stat(target); err == nil {
+		return // ~/.aish exists -> normal operation, do not touch legacy data
+	}
+	legacy := filepath.Join(home, ".kish")
+	info, err := os.Stat(legacy)
+	if err != nil || !info.IsDir() {
+		return // no legacy dir -> nothing to migrate
+	}
+
+	if err := os.Rename(legacy, target); err == nil {
+		fmt.Fprintf(os.Stderr, "aish: migrated config %s -> %s\n", legacy, target)
+		return
+	}
+
+	// Cross-device or other rename failure: copy recursively, keep the legacy
+	// dir intact so a partial copy never loses the originals.
+	if err := copyDir(legacy, target); err != nil {
+		fmt.Fprintf(os.Stderr, "aish: WARNING legacy config migration failed: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: continuing with fresh %s; %s left untouched\n", target, legacy)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "aish: copied config %s -> %s (legacy dir kept)\n", legacy, target)
+}
+
+// copyDir recursively copies src into dst, preserving file modes.
+func copyDir(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dst, srcInfo.Mode().Perm()); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := copyFile(srcPath, dstPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	info, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+// kishDir is a backward-compatible alias for aishDir. Kept so callers still
+// referencing the old name keep working after the rebrand.
+func kishDir() string { return aishDir() }
 
 func expandHome(path string) string {
 	if strings.HasPrefix(path, "~/") {

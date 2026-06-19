@@ -1,6 +1,6 @@
 // Copyright 2026 cuber IT service. Assisted by Claude Code (Anthropic).
 // Licensed under Apache 2.0.
-// Adapter between kish's KIEngine interface and kish's own slim LLM layer
+// Adapter between aish's KIEngine interface and aish's own slim LLM layer
 // (internal/llm) for OpenAI and Anthropic. No external provider dependency.
 package main
 
@@ -30,10 +30,10 @@ func NewProviderEngine(p llm.Provider, cfg llm.ProviderConfig) *ProviderEngine {
 		model = p.DefaultModel()
 	}
 
-	dbPath := filepath.Join(kishDir(), "costs.db")
+	dbPath := filepath.Join(aishDir(), "costs.db")
 	db, err := llm.NewDB("file:"+dbPath, p.Name())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: cost db error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: cost db error: %s\n", err)
 	}
 
 	return &ProviderEngine{

@@ -10,7 +10,7 @@
 //   3. Sparmode (90%)                      -> reduce max_tokens / shorter prompt
 //   4. Daily / monthly budget              -> call refused (error)
 //   5. Killswitch                          -> hard-stop everything
-//   Audit: every check + every block written to ~/.kish/cost_audit.jsonl
+//   Audit: every check + every block written to ~/.aish/cost_audit.jsonl
 //
 // FAIL-CLOSED: the pre-call budget check runs BEFORE the API call. On any
 // limit breach OR any error reading usage/budget, the call is refused. We never
@@ -73,7 +73,7 @@ func defaultCostLimits() CostLimits {
 	}
 }
 
-// budgetOverrides is the on-disk shape of ~/.kish/budget.json. All limit fields
+// budgetOverrides is the on-disk shape of ~/.aish/budget.json. All limit fields
 // are pointers so "unset" is distinguishable from "set to zero". Killswitch is
 // stored here too, so the kill state survives restarts.
 type budgetOverrides struct {
@@ -89,14 +89,14 @@ type budgetOverrides struct {
 }
 
 func budgetStorePath() string {
-	return filepath.Join(kishDir(), "budget.json")
+	return filepath.Join(aishDir(), "budget.json")
 }
 
 func costAuditPath() string {
-	return filepath.Join(kishDir(), "cost_audit.jsonl")
+	return filepath.Join(aishDir(), "cost_audit.jsonl")
 }
 
-// loadBudgetOverrides reads ~/.kish/budget.json. A missing file is fine (returns
+// loadBudgetOverrides reads ~/.aish/budget.json. A missing file is fine (returns
 // empty overrides, no error). A present-but-unreadable/corrupt file IS an error
 // so the guard can fail closed.
 func loadBudgetOverrides() (budgetOverrides, error) {
@@ -335,7 +335,7 @@ func (g *CostGuard) RecordUsage(model string, inputTokens, outputTokens int, usd
 
 var costAuditMu sync.Mutex
 
-// writeCostAudit appends one JSON line to ~/.kish/cost_audit.jsonl. Audit
+// writeCostAudit appends one JSON line to ~/.aish/cost_audit.jsonl. Audit
 // failures are non-fatal (logged to stderr) — they must not block a call that
 // the guard already approved, but also must never let a *block* slip through;
 // blocks are decided before this is reached.
@@ -352,12 +352,12 @@ func writeCostAudit(event string, data map[string]interface{}) {
 	}
 	line, err := json.Marshal(entry)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: cost audit marshal failed: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: cost audit marshal failed: %s\n", err)
 		return
 	}
 	file, err := os.OpenFile(costAuditPath(), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: cost audit failed: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: cost audit failed: %s\n", err)
 		return
 	}
 	defer file.Close()

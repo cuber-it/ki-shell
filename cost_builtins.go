@@ -168,7 +168,7 @@ func handleBudgetCmd(stdout, stderr io.Writer, args []string) error {
 func setBudgetValue(stdout, stderr io.Writer, key, value string) error {
 	ov, err := loadBudgetOverrides()
 	if err != nil {
-		fmt.Fprintf(stderr, "kish: budget.json nicht lesbar: %s\n", err)
+		fmt.Fprintf(stderr, "aish: budget.json nicht lesbar: %s\n", err)
 		return interp.ExitStatus(1)
 	}
 
@@ -176,35 +176,35 @@ func setBudgetValue(stdout, stderr io.Writer, key, value string) error {
 	case "month":
 		val, perr := parseBudgetFloat(value)
 		if perr != nil {
-			fmt.Fprintf(stderr, "kish: ungueltiger Wert: %s\n", value)
+			fmt.Fprintf(stderr, "aish: ungueltiger Wert: %s\n", value)
 			return interp.ExitStatus(1)
 		}
 		ov.MaxUsdPerMonth = &val
 	case "day":
 		val, perr := parseBudgetFloat(value)
 		if perr != nil {
-			fmt.Fprintf(stderr, "kish: ungueltiger Wert: %s\n", value)
+			fmt.Fprintf(stderr, "aish: ungueltiger Wert: %s\n", value)
 			return interp.ExitStatus(1)
 		}
 		ov.MaxUsdPerDay = &val
 	case "run":
 		val, perr := parseBudgetFloat(value)
 		if perr != nil {
-			fmt.Fprintf(stderr, "kish: ungueltiger Wert: %s\n", value)
+			fmt.Fprintf(stderr, "aish: ungueltiger Wert: %s\n", value)
 			return interp.ExitStatus(1)
 		}
 		ov.MaxUsdPerRun = &val
 	case "confirm":
 		val, perr := parseBudgetFloat(value)
 		if perr != nil {
-			fmt.Fprintf(stderr, "kish: ungueltiger Wert: %s\n", value)
+			fmt.Fprintf(stderr, "aish: ungueltiger Wert: %s\n", value)
 			return interp.ExitStatus(1)
 		}
 		ov.ConfirmAboveUsd = &val
 	case "tokens-run":
 		val, perr := parseBudgetInt(value)
 		if perr != nil {
-			fmt.Fprintf(stderr, "kish: ungueltiger Wert: %s\n", value)
+			fmt.Fprintf(stderr, "aish: ungueltiger Wert: %s\n", value)
 			return interp.ExitStatus(1)
 		}
 		intVal := int(val)
@@ -216,17 +216,17 @@ func setBudgetValue(stdout, stderr io.Writer, key, value string) error {
 	case "tokens-day":
 		val, perr := parseBudgetInt(value)
 		if perr != nil {
-			fmt.Fprintf(stderr, "kish: ungueltiger Wert: %s\n", value)
+			fmt.Fprintf(stderr, "aish: ungueltiger Wert: %s\n", value)
 			return interp.ExitStatus(1)
 		}
 		ov.MaxTokensPerDay = &val
 	default:
-		fmt.Fprintf(stderr, "kish: unbekannter Schluessel: %s (month|day|run|tokens-run|tokens-day|confirm)\n", key)
+		fmt.Fprintf(stderr, "aish: unbekannter Schluessel: %s (month|day|run|tokens-run|tokens-day|confirm)\n", key)
 		return interp.ExitStatus(1)
 	}
 
 	if err := saveBudgetOverrides(ov); err != nil {
-		fmt.Fprintf(stderr, "kish: budget.json schreiben fehlgeschlagen: %s\n", err)
+		fmt.Fprintf(stderr, "aish: budget.json schreiben fehlgeschlagen: %s\n", err)
 		return interp.ExitStatus(1)
 	}
 	fmt.Fprintf(stdout, "Budget gesetzt: %s = %s\n", key, value)
@@ -238,7 +238,7 @@ func handleKillswitchCmd(stdout, stderr io.Writer, args []string) error {
 	if len(args) == 0 {
 		ov, err := loadBudgetOverrides()
 		if err != nil {
-			fmt.Fprintf(stderr, "kish: budget.json nicht lesbar: %s\n", err)
+			fmt.Fprintf(stderr, "aish: budget.json nicht lesbar: %s\n", err)
 			return interp.ExitStatus(1)
 		}
 		kill := ov.Killswitch != nil && *ov.Killswitch
@@ -259,12 +259,12 @@ func handleKillswitchCmd(stdout, stderr io.Writer, args []string) error {
 
 	ov, err := loadBudgetOverrides()
 	if err != nil {
-		fmt.Fprintf(stderr, "kish: budget.json nicht lesbar: %s\n", err)
+		fmt.Fprintf(stderr, "aish: budget.json nicht lesbar: %s\n", err)
 		return interp.ExitStatus(1)
 	}
 	ov.Killswitch = &newState
 	if err := saveBudgetOverrides(ov); err != nil {
-		fmt.Fprintf(stderr, "kish: budget.json schreiben fehlgeschlagen: %s\n", err)
+		fmt.Fprintf(stderr, "aish: budget.json schreiben fehlgeschlagen: %s\n", err)
 		return interp.ExitStatus(1)
 	}
 	fmt.Fprintf(stdout, "Killswitch: %s\n", onOff(newState))

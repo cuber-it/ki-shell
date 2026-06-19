@@ -21,10 +21,10 @@ type ShellLog struct {
 }
 
 func newShellLog() *ShellLog {
-	logPath := filepath.Join(kishDir(), "shell.log")
+	logPath := filepath.Join(aishDir(), "shell.log")
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: shell.log error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: shell.log error: %s\n", err)
 		return nil
 	}
 

@@ -21,14 +21,14 @@ type AuditLog struct {
 var audit *AuditLog
 
 func initAudit() {
-	logPath := filepath.Join(kishDir(), "audit.log")
+	logPath := filepath.Join(aishDir(), "audit.log")
 	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: audit log error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: audit log error: %s\n", err)
 		return
 	}
 	audit = &AuditLog{file: file, filePath: logPath}
-	ProtectedPaths = append(ProtectedPaths, "~/.kish/audit.log")
+	ProtectedPaths = append(ProtectedPaths, "~/.aish/audit.log", "~/.kish/audit.log")
 	audit.rotateIfNeeded()
 }
 
@@ -111,7 +111,7 @@ func (a *AuditLog) PrintRecent(n int) {
 	}
 	data, err := os.ReadFile(a.filePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: %s\n", err)
 		return
 	}
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")

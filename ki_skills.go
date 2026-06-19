@@ -20,7 +20,7 @@ type Skill struct {
 var loadedSkills []Skill
 
 func initSkills() {
-	dir := filepath.Join(kishDir(), "skills")
+	dir := filepath.Join(aishDir(), "skills")
 	os.MkdirAll(dir, 0755)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -69,7 +69,7 @@ func skillsForPrompt() string {
 
 func listSkills() string {
 	if len(loadedSkills) == 0 {
-		return "No skills installed. Add YAML files to ~/.kish/skills/"
+		return "No skills installed. Add YAML files to ~/.aish/skills/"
 	}
 	var lines []string
 	for _, s := range loadedSkills {

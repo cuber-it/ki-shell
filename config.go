@@ -39,7 +39,7 @@ func DefaultConfig() *KishConfig {
 
 func LoadConfig() *KishConfig {
 	cfg := DefaultConfig()
-	path := filepath.Join(kishDir(), "config.yaml")
+	path := filepath.Join(aishDir(), "config.yaml")
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -47,7 +47,7 @@ func LoadConfig() *KishConfig {
 	}
 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "kish: config error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: config error: %s\n", err)
 		return DefaultConfig()
 	}
 
@@ -65,12 +65,12 @@ func LoadConfig() *KishConfig {
 }
 
 func WriteDefaultConfig() {
-	path := filepath.Join(kishDir(), "config.yaml")
+	path := filepath.Join(aishDir(), "config.yaml")
 	if fileExists(path) {
 		return
 	}
 
-	content := `# kish configuration
+	content := `# aish configuration
 # KI provider: openai, anthropic, or empty (disabled)
 ki:
   provider: ""

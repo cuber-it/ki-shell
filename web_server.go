@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -421,27 +422,27 @@ func generateToken() string {
 }
 
 func ensureSelfSignedCert() (string, string) {
-	certFile := os.Getenv("HOME") + "/.kish/cert.pem"
-	keyFile := os.Getenv("HOME") + "/.kish/key.pem"
+	certFile := filepath.Join(aishDir(), "cert.pem")
+	keyFile := filepath.Join(aishDir(), "key.pem")
 	if fileExists(certFile) && fileExists(keyFile) {
 		return certFile, keyFile
 	}
 	// Generate self-signed cert
 	cert, key, err := generateSelfSignedCert()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish web: TLS cert generation failed: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish web: TLS cert generation failed: %s\n", err)
 		return "", ""
 	}
 	os.WriteFile(certFile, cert, 0600)
 	os.WriteFile(keyFile, key, 0600)
-	fmt.Fprintf(os.Stderr, "kish web: self-signed cert created\n")
+	fmt.Fprintf(os.Stderr, "aish web: self-signed cert created\n")
 	return certFile, keyFile
 }
 
 func generateSelfSignedCert() ([]byte, []byte, error) {
 	// Use openssl for simplicity
 	cmd := exec.Command("openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", "/dev/stdout",
-		"-out", "/dev/stdout", "-days", "365", "-nodes", "-subj", "/CN=kish")
+		"-out", "/dev/stdout", "-days", "365", "-nodes", "-subj", "/CN=aish")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, nil, err

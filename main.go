@@ -1,7 +1,7 @@
 // Copyright 2026 cuber IT service. Assisted by Claude Code (Anthropic).
 // Licensed under Apache 2.0.
 //
-// kish — the KI shell. Bash-compatible with native AI integration.
+// aish — the AI shell with enforced cost governance. Bash-compatible.
 // https://github.com/cuber-it/ki-shell
 package main
 
@@ -40,7 +40,7 @@ func main() {
 		os.Exit(0)
 	}
 	if *flagVersion {
-		fmt.Printf("kish %s\n", version)
+		fmt.Printf("aish %s\n", version)
 		os.Exit(0)
 	}
 	if *flagSubshell != "" {
@@ -63,7 +63,7 @@ func main() {
 			TLS:   !*flagWebInsecure,
 		})
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "kish web:", err)
+			fmt.Fprintln(os.Stderr, "aish web:", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -75,26 +75,28 @@ func main() {
 		os.Exit(int(exitStatus))
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "kish:", err)
+		fmt.Fprintln(os.Stderr, "aish:", err)
 		os.Exit(1)
 	}
 }
 
 func printHelp() {
-	fmt.Printf(`kish %s — the KI shell
+	fmt.Printf(`aish %s — the AI shell with enforced cost governance
 
 Usage:
-  kish                     interactive shell
-  kish script.sh [args]    run script
-  kish -c 'command'        run command
-  kish -c 'ki query'       run KI query non-interactively
+  aish                     interactive shell
+  aish script.sh [args]    run script
+  aish -c 'command'        run command
+  aish -c 'ki query'       run KI query non-interactively
+
+(kish is kept as a backward-compatible alias for aish.)
 
 Flags:
   -c string    command to execute
   -i           force interactive mode
   -l           act as login shell
   -v int       verbose: 0=quiet (default), 1=actions, 2=debug
-  --norc       do not read ~/.kishrc or ~/.bashrc
+  --norc       do not read ~/.aishrc or ~/.bashrc
   --noprofile  do not read /etc/profile or ~/.profile
   --version    print version
   --help       show this help
@@ -124,7 +126,7 @@ KI Commands (interactive):
   showlogs [filter] [n]  show logs (shell|audit|conversation)
   showmemory [filter]    show vault (facts|sessions|scratch)
   ki:skills              list available skills
-  ki:disk                show ~/.kish/ disk usage
+  ki:disk                show ~/.aish/ disk usage
 
 More: https://github.com/cuber-it/ki-shell
 `, version)

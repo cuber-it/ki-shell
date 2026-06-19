@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Rebrand kish -> aish
+- Product renamed kish -> aish ("KI" was too German). Binary build target is now `aish`; `kish` is kept as a backward-compatible alias/symlink (`make install` creates it)
+- Config dir `~/.kish` -> `~/.aish` (`kishDir()` -> `aishDir()`), with automatic, lossless migration on first start: an existing `~/.kish` is moved to `~/.aish` (atomic rename, recursive-copy fallback across filesystems, legacy dir kept on copy). If only `~/.aish` exists it is used as-is and `~/.kish` is never overwritten
+- Startup files: `~/.aishrc`, `/etc/aish.aishrc`, `.aishrc`, `~/.aish/profile` are preferred, with the legacy `~/.kish*` names honored as fallback
+- Self-modification block and protected-path list cover both the new `~/.aish/*` and legacy `~/.kish/*` paths
+- Strings/docs updated (README, SECURITY.md, man page renamed `kish.1` -> `aish.1`, help text, default prompt name, web UI title, error prefixes, About). The `KISH_PS1`/`KISH_GOD_MODE`/`KISH_THEME` env var names are kept for compatibility
+- Unchanged on purpose: the shell fork `kish-sh` (internal dependency, module path) and the `ki` AI-command prefix
+- Migration unit tests (move / skip-when-target-exists / no-legacy)
+
 ### Provider layer (self-contained)
 - New `internal/llm` package: kish's own slim OpenAI + Anthropic layer (chat with SSE streaming + prompt/completion token usage) and SQLite usage DB (`modernc.org/sqlite`, pure Go) — replaces the external core provider dependency
 - Removed the `heinzel-ai-core-go` require and the `../heinzel` replace directive; kish now builds and runs anywhere (e.g. Acer) without a sibling repo

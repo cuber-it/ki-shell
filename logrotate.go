@@ -14,7 +14,7 @@ import (
 )
 
 func rotateAllLogs() {
-	dir := kishDir()
+	dir := aishDir()
 	today := time.Now().Format("2006-01-02")
 	rotateLog(filepath.Join(dir, "shell.log"), today, 30)
 	rotateLog(filepath.Join(dir, "audit.log"), today, 90)
@@ -95,7 +95,7 @@ func cleanOldGzips(dir string, maxDays int) {
 }
 
 func DiskUsage() string {
-	dir := kishDir()
+	dir := aishDir()
 	var total int64
 	var details []struct {
 		name string

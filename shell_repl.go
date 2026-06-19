@@ -43,7 +43,7 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 
 	rl, err := readline.NewFromConfig(&readline.Config{
 		Prompt:          buildPrompt(),
-		HistoryFile:     filepath.Join(kishDir(), "readline_history"),
+		HistoryFile:     filepath.Join(aishDir(), "readline_history"),
 		HistoryLimit:    10000,
 		AutoComplete:    newCompleter(),
 		InterruptPrompt: "^C",
@@ -141,7 +141,7 @@ func runInteractive(runner *interp.Runner, stdoutTee, stderrTee *TeeWriter) erro
 		multiLine.Reset()
 
 		if parseErr != nil {
-			fmt.Fprintf(os.Stderr, "kish: %s\n", parseErr)
+			fmt.Fprintf(os.Stderr, "aish: %s\n", parseErr)
 			rl.SetPrompt(buildPrompt())
 			continue
 		}
@@ -287,10 +287,10 @@ func resolveJobCmd(fields []string, fn func(int) error) {
 	id := resolveJobID(fields)
 	if id > 0 {
 		if err := fn(id); err != nil {
-			fmt.Fprintln(os.Stderr, "kish:", err)
+			fmt.Fprintln(os.Stderr, "aish:", err)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "kish: %s: no current job\n", fields[0])
+		fmt.Fprintf(os.Stderr, "aish: %s: no current job\n", fields[0])
 	}
 }
 
@@ -303,7 +303,7 @@ func dispatchBuiltin(fields []string) {
 			return
 		}
 		if err := kiMemory.Store(fields[1], strings.Join(fields[2:], " "), "fact", nil); err != nil {
-			fmt.Fprintf(os.Stderr, "kish: %s\n", err)
+			fmt.Fprintf(os.Stderr, "aish: %s\n", err)
 		} else {
 			fmt.Fprintf(os.Stderr, "Remembered: %s\n", fields[1])
 		}
@@ -319,7 +319,7 @@ func dispatchBuiltin(fields []string) {
 			return
 		}
 		for _, cat := range []string{"fact", "session", "scratch"} {
-			os.Remove(filepath.Join(kishDir(), "vault", cat, sanitizeFilename(fields[1])+".yaml"))
+			os.Remove(filepath.Join(aishDir(), "vault", cat, sanitizeFilename(fields[1])+".yaml"))
 		}
 		fmt.Fprintf(os.Stderr, "Forgotten: %s\n", fields[1])
 	case "ki:status":
@@ -392,7 +392,7 @@ func handleKI(ctx context.Context, input string) {
 		}
 	}
 	if input == "" {
-		fmt.Fprintln(os.Stderr, "kish: nothing to ask")
+		fmt.Fprintln(os.Stderr, "aish: nothing to ask")
 		return
 	}
 
@@ -425,14 +425,14 @@ func handleKI(ctx context.Context, input string) {
 
 	if kiPermissions.AgentMode {
 		if _, err := RunAgentLoop(ctx, kiEngine, input, filteredCtx, kiMemory, rateLimiter.MaxAgentSteps()); err != nil {
-			fmt.Fprintf(os.Stderr, "kish: ki error: %s\n", err)
+			fmt.Fprintf(os.Stderr, "aish: ki error: %s\n", err)
 		}
 		return
 	}
 
 	resp, err := kiEngine.Query(ctx, input, filteredCtx, os.Stdout)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "kish: ki error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: ki error: %s\n", err)
 		return
 	}
 	if resp != nil && resp.SuggestedCommand != "" {

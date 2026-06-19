@@ -33,7 +33,7 @@ type KishHistory struct {
 var kishHistory *KishHistory
 
 func initHistory() {
-	path := filepath.Join(kishDir(), "history")
+	path := filepath.Join(aishDir(), "history")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0600)
 	if err != nil {
 		return

@@ -30,7 +30,7 @@ type MemoryEntry struct {
 }
 
 func newMemory() *Memory {
-	dir := filepath.Join(kishDir(), "vault")
+	dir := filepath.Join(aishDir(), "vault")
 	os.MkdirAll(dir, 0755)
 	m := &Memory{vaultDir: dir}
 	m.cleanExpired()

@@ -65,13 +65,18 @@ func DefaultPermissions() Permissions {
 }
 
 var SelfModifyPaths = []string{
+	"~/.aish/config.yaml",
+	"~/.aish/permissions.yaml",
+	"~/.aish/aishrc",
+	// legacy ~/.kish entries kept protected for migrated installs
 	"~/.kish/config.yaml",
 	"~/.kish/permissions.yaml",
 	"~/.kish/kishrc",
 }
 
 var ProtectedPaths = []string{
-	"~/.kish/vault/",
+	"~/.aish/vault/",
+	"~/.kish/vault/", // legacy
 	"/etc/shells", "/etc/passwd", "/etc/shadow", "/etc/sudoers",
 	"~/.ssh/config", "~/.ssh/authorized_keys", "~/.ssh/known_hosts", "~/.ssh/id_",
 }
@@ -216,24 +221,24 @@ func resolvePaths(paths []string) []string {
 
 func LoadPermissions() Permissions {
 	perms := DefaultPermissions()
-	data, err := os.ReadFile(filepath.Join(kishDir(), "permissions.yaml"))
+	data, err := os.ReadFile(filepath.Join(aishDir(), "permissions.yaml"))
 	if err != nil {
 		WriteDefaultPermissions()
 		return perms
 	}
 	if err := yaml.Unmarshal(data, &perms); err != nil {
-		fmt.Fprintf(os.Stderr, "kish: permissions error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "aish: permissions error: %s\n", err)
 		return DefaultPermissions()
 	}
 	return perms
 }
 
 func WriteDefaultPermissions() {
-	path := filepath.Join(kishDir(), "permissions.yaml")
+	path := filepath.Join(aishDir(), "permissions.yaml")
 	if fileExists(path) {
 		return
 	}
-	content := `# kish permissions
+	content := `# aish permissions
 auto_execute: false
 confirm_destructive: true
 blocked_commands:

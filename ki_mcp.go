@@ -1,7 +1,7 @@
 // Copyright 2026 cuber IT service. Assisted by Claude Code (Anthropic).
 // Licensed under Apache 2.0.
 // MCP (Model Context Protocol) client integration.
-// Allows the KI to use external tools via MCP servers configured in ~/.kish/config.yaml
+// Allows the KI to use external tools via MCP servers configured in ~/.aish/config.yaml
 package main
 
 import (

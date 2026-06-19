@@ -41,7 +41,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			key := args[1]
 			value := strings.Join(args[2:], " ")
 			if err := kiMemory.Store(key, value, "fact", nil); err != nil {
-				fmt.Fprintf(hc.Stderr, "kish: memory error: %s\n", err)
+				fmt.Fprintf(hc.Stderr, "aish: memory error: %s\n", err)
 				return interp.ExitStatus(1)
 			}
 			fmt.Fprintf(hc.Stderr, "Remembered: %s\n", key)
@@ -70,7 +70,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			}
 			key := args[1]
 			for _, cat := range []string{"fact", "session", "scratch"} {
-				path := filepath.Join(kishDir(), "vault", cat, sanitizeFilename(key)+".yaml")
+				path := filepath.Join(aishDir(), "vault", cat, sanitizeFilename(key)+".yaml")
 				os.Remove(path)
 			}
 			fmt.Fprintf(hc.Stderr, "Forgotten: %s\n", key)
@@ -118,7 +118,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 			}
 			if filter == "" {
 				total := len(kiMemory.AllFacts()) + len(kiMemory.RecentSessions(100)) + len(kiMemory.listCategory("scratch"))
-				fmt.Fprintf(&buf, "%d entries in ~/.kish/vault/\n", total)
+				fmt.Fprintf(&buf, "%d entries in ~/.aish/vault/\n", total)
 			}
 			pageOutput(buf.String())
 			return nil
@@ -270,7 +270,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				return nil
 			}
 			if err := SwitchVariant(args[1]); err != nil {
-				fmt.Fprintf(hc.Stderr, "kish: %s\n", err)
+				fmt.Fprintf(hc.Stderr, "aish: %s\n", err)
 				return interp.ExitStatus(1)
 			}
 			fmt.Fprintf(hc.Stderr, "Prompt variant switched to: %s\n", args[1])
@@ -297,7 +297,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 
 		case "ki:mcp":
 			if mcpClient == nil {
-				fmt.Fprintln(hc.Stderr, "No MCP servers configured. See ~/.kish/config.yaml")
+				fmt.Fprintln(hc.Stderr, "No MCP servers configured. See ~/.aish/config.yaml")
 				return nil
 			}
 			if len(args) > 1 {
@@ -305,7 +305,7 @@ func kishBuiltinsMiddleware(next interp.ExecHandlerFunc) interp.ExecHandlerFunc 
 				case "start":
 					if len(args) > 2 {
 						if err := mcpClient.Start(args[2]); err != nil {
-							fmt.Fprintf(hc.Stderr, "kish: %s\n", err)
+							fmt.Fprintf(hc.Stderr, "aish: %s\n", err)
 						}
 					}
 				case "stop":

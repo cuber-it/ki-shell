@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -37,7 +38,7 @@ func (f fakeUsage) MonthUsd() (float64, error) {
 	return f.monthUsd, nil
 }
 
-// withTempKishHome points kishDir() at a fresh temp HOME for the test and resets
+// withTempKishHome points aishDir() at a fresh temp HOME for the test and resets
 // kiConfig. Returns the dir so the test can read/write budget.json.
 func withTempKishHome(t *testing.T) string {
 	t.Helper()
@@ -45,8 +46,12 @@ func withTempKishHome(t *testing.T) string {
 	t.Setenv("HOME", tmp)
 	prevConfig := kiConfig
 	kiConfig = DefaultConfig()
-	t.Cleanup(func() { kiConfig = prevConfig })
-	return filepath.Join(tmp, ".kish")
+	t.Cleanup(func() {
+		kiConfig = prevConfig
+		aishDirOnce = sync.Once{} // reset migration latch for the next test's fresh HOME
+	})
+	aishDirOnce = sync.Once{} // ensure aishDir() re-evaluates against this temp HOME
+	return filepath.Join(tmp, ".aish")
 }
 
 // guardWith builds a guard with default limits, the given usage source, and an

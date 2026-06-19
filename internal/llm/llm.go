@@ -53,6 +53,10 @@ type ProviderConfig struct {
 	APIKey       string                  `yaml:"api_key"`
 	DefaultModel string                  `yaml:"default_model"`
 	Pricing      map[string]ModelPricing `yaml:"pricing"`
+	// MaxRetries bounds automatic retries on transient API failures (429/5xx
+	// and connection errors) that occur BEFORE the response stream begins.
+	// 0 means use the package default; set negative to disable retries.
+	MaxRetries int `yaml:"max_retries"`
 }
 
 // CostForTokens calculates the cost in USD for a given model and token counts.

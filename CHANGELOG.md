@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Resilience (API retries)
+- `internal/llm` now retries transient API failures (HTTP 429 and 5xx, plus connection errors) with exponential backoff (1/2/4s, capped at 8s) and honors a numeric `Retry-After` header
+- Safe by construction: a request is only retried *before* its response stream begins, so no tokens have been produced yet — retrying can never cause double cost or duplicated output. Once streaming starts there is no retry
+- Non-retryable responses (4xx: bad request, auth, not found) surface immediately; after retries are exhausted the error is returned so callers fail closed
+- Configurable per provider via `max_retries` (0 = default 3, negative = disabled)
+- Retry tests cover 429/5xx-then-success, no-retry-on-4xx, exhaustion, disabled, backoff, and Retry-After
+
 ### Rebrand kish -> aish
 - Product renamed kish -> aish ("KI" was too German). Binary build target is now `aish`; `kish` is kept as a backward-compatible alias/symlink (`make install` creates it)
 - Config dir `~/.kish` -> `~/.aish` (`kishDir()` -> `aishDir()`), with automatic, lossless migration on first start: an existing `~/.kish` is moved to `~/.aish` (atomic rename, recursive-copy fallback across filesystems, legacy dir kept on copy). If only `~/.aish` exists it is used as-is and `~/.kish` is never overwritten

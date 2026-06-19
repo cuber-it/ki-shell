@@ -96,14 +96,18 @@ func (p *AnthropicProvider) ChatStream(req ChatRequest, onChunk func(StreamChunk
 	if err != nil {
 		return fmt.Errorf("marshal request: %w", err)
 	}
-	httpReq, err := http.NewRequest("POST", p.config.APIBase+"/messages", bytes.NewReader(jsonBody))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+	// newReq is rebuilt per attempt so the body is replayable across retries.
+	newReq := func() (*http.Request, error) {
+		httpReq, err := http.NewRequest("POST", p.config.APIBase+"/messages", bytes.NewReader(jsonBody))
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		p.auth(httpReq)
+		return httpReq, nil
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	p.auth(httpReq)
 
-	resp, err := p.client.Do(httpReq)
+	resp, err := doWithRetry(p.client, newReq, resolveMaxRetries(p.config.MaxRetries))
 	if err != nil {
 		return err
 	}

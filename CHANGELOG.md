@@ -8,6 +8,7 @@
 - Propose-don't-dispose: promotion is an explicit, user-initiated step — a raw run (which may have failed) is never auto-learned. The default description is the clean first paragraph of the prompt (preThink enrichment stripped)
 - Fail-closed write: `saveSkill` returns an error the caller handles; a freshly learned skill is reloaded immediately
 - After a KI run that produced a fresh, not-yet-learned script, a discreet one-line hint suggests `ki:learn <name>` (interactive only; suppressed once the script is already a skill)
+- Zero-token reuse: a natural-language request that unambiguously matches a learned skill is detected locally (keyword overlap, ≥2 shared significant words, clear margin) and proposed — `[j=run / n=no / k=ask model]` — running the skill with no API call. Conservative by design; on any ambiguity it falls through to the model. Propose-don't-dispose: the human confirms, the shell never auto-runs on a fuzzy match. Skill runs are recorded in the action log
 - Tests: script-block extraction (bash/sh/shell/action/plain), skill round-trip, learn-from-conversation, no-script-fails, scriptless-followup-skipped, description-enrichment-stripped, not-a-KI-request
 
 ### KI action log (audit + learning source)

@@ -398,6 +398,22 @@ func handleKI(ctx context.Context, input string) {
 		return
 	}
 
+	// Zero-token path: if the request unambiguously matches a learned skill,
+	// propose running it instead of calling the model (propose-don't-dispose).
+	if isInteractiveMode {
+		if skill := matchSkillForQuery(input); skill != nil {
+			switch askSkillMatch(skill) {
+			case skillRun:
+				runSkillDirect(skill)
+				return
+			case skillCancel:
+				return
+			case skillToKI:
+				// fall through to the normal model path
+			}
+		}
+	}
+
 	rawCtx := shellContext.Collect()
 	filteredCtx := kiPermissions.FilterContext(rawCtx)
 

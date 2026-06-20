@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### KI action log (audit + learning source)
+- New append-only `~/.aish/actions.jsonl`: every KI interaction is recorded with the task (prompt), the answer, the suggested command, model, status, token usage and cost. Written from the single `ProviderEngine.Query` choke point, so all callers are covered
+- Two purposes at once: an audit trail (what was the AI asked, what did it answer) and a learning source (a task solved once need not be re-explored — raw material for later consolidation into reusable skills)
+- Distinct from the existing logs: the shell log records executed commands (the outcome), `cost_audit.jsonl` records guard decisions; this log captures the task→solution pair
+- Discipline: a raw record is a SOURCE, not a confirmed recipe (a task may have failed). Promotion to a reusable skill stays a separate, confirmed step — propose-don't-dispose. This change only writes the raw log
+- Fail-safe: logging never blocks or breaks the shell flow; a write error is reported and swallowed. Failed KI attempts are logged too (part of the audit, and a "this did not work" signal)
+
 ### Resilience (API retries)
 - `internal/llm` now retries transient API failures (HTTP 429 and 5xx, plus connection errors) with exponential backoff (1/2/4s, capped at 8s) and honors a numeric `Retry-After` header
 - Safe by construction: a request is only retried *before* its response stream begins, so no tokens have been produced yet — retrying can never cause double cost or duplicated output. Once streaming starts there is no retry

@@ -151,17 +151,35 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 	fmt.Fprintln(out)
 
 	cost := e.config.CostForTokens(e.model, usage.InputTokens, usage.OutputTokens)
+	status := "ok"
+	errMsg := ""
+	if err != nil {
+		status = "error"
+		errMsg = err.Error()
+	}
 	if e.db != nil {
-		status := "ok"
-		errMsg := ""
-		if err != nil {
-			status = "error"
-			errMsg = err.Error()
-		}
 		e.db.LogUsage(e.model, usage.InputTokens, usage.OutputTokens, latency.Milliseconds(), status, errMsg, "", cost)
 	}
 	// Book consumption into the cost audit log.
 	guard.RecordUsage(e.model, usage.InputTokens, usage.OutputTokens, cost)
+
+	// Append a raw action record (audit trail + learning source). Failed
+	// attempts are logged too — they are part of the audit and signal "this did
+	// not work" for later consolidation. logAction never fails the flow.
+	responseText := fullText.String()
+	logKIAction(KIActionRecord{
+		Event:            "ki_query",
+		Cwd:              shellCtx.Cwd,
+		Prompt:           input,
+		Model:            e.model,
+		Response:         responseText,
+		SuggestedCommand: extractCommand(responseText),
+		Status:           status,
+		Error:            errMsg,
+		InputTokens:      usage.InputTokens,
+		OutputTokens:     usage.OutputTokens,
+		CostUSD:          cost,
+	})
 
 	if err != nil {
 		if ctx.Err() != nil {
@@ -170,7 +188,6 @@ func (e *ProviderEngine) Query(ctx context.Context, input string, shellCtx Shell
 		return nil, err
 	}
 
-	responseText := fullText.String()
 	kiConversation.Add(input, responseText)
 	vKIResponse(responseText)
 

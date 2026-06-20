@@ -9,7 +9,20 @@ import (
 
 var kiPrefix = "ki"
 
+// localKIBuiltins are ki:-prefixed commands handled deterministically by the
+// shell (no API call), so they must NOT be routed to the model.
+func isLocalKIBuiltin(cmd string) bool {
+	switch cmd {
+	case "ki:learn":
+		return true
+	}
+	return false
+}
+
 func isKIRequest(input string) bool {
+	if f := strings.Fields(input); len(f) > 0 && isLocalKIBuiltin(f[0]) {
+		return false
+	}
 	if strings.HasPrefix(input, kiPrefix+" ") || strings.HasPrefix(input, kiPrefix+": ") || strings.HasPrefix(input, kiPrefix+":") {
 		return true
 	}

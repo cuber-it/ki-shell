@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Learning loop (ki:learn)
+- New `ki:learn <name> [description]` promotes the script from the last KI answer into a reusable skill (`~/.aish/skills/<name>.yaml`). The n-th time, the skill is in the prompt and gets reused (run via `skill:<name>`) instead of asking the model to rebuild it — saving tokens
+- Deterministic, no API call: classified as a local builtin (not routed to the model). Searches the conversation backwards for the most recent turn containing a fenced script, skipping scriptless agent-loop follow-ups
+- Propose-don't-dispose: promotion is an explicit, user-initiated step — a raw run (which may have failed) is never auto-learned. The default description is the clean first paragraph of the prompt (preThink enrichment stripped)
+- Fail-closed write: `saveSkill` returns an error the caller handles; a freshly learned skill is reloaded immediately
+- Tests: script-block extraction (bash/sh/shell/action/plain), skill round-trip, learn-from-conversation, no-script-fails, scriptless-followup-skipped, description-enrichment-stripped, not-a-KI-request
+
 ### KI action log (audit + learning source)
 - New append-only `~/.aish/actions.jsonl`: every KI interaction is recorded with the task (prompt), the answer, the suggested command, model, status, token usage and cost. Written from the single `ProviderEngine.Query` choke point, so all callers are covered
 - Two purposes at once: an audit trail (what was the AI asked, what did it answer) and a learning source (a task solved once need not be re-explored — raw material for later consolidation into reusable skills)

@@ -247,6 +247,8 @@ func handleBuiltin(line string) bool {
 		}
 	case "ki:skills":
 		fmt.Fprintln(os.Stdout, listSkills())
+	case "ki:learn":
+		handleLearnCmd(fields)
 	case "ki:disk":
 		fmt.Fprintln(os.Stdout, DiskUsage())
 	case "ki:status", "ki:costs", "ki:prompt", "ki:variant", "ki:audit", "ki:log",

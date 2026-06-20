@@ -124,6 +124,45 @@ func TestLearnSkipsScriptlessFollowups(t *testing.T) {
 	}
 }
 
+func TestAlreadyASkill(t *testing.T) {
+	prev := loadedSkills
+	t.Cleanup(func() { loadedSkills = prev })
+	loadedSkills = []Skill{{Name: "x", Script: "echo hi\nls"}}
+
+	if !alreadyASkill("  echo hi\nls  ") {
+		t.Error("should match an existing skill script (whitespace-insensitive)")
+	}
+	if alreadyASkill("echo other") {
+		t.Error("should not match a script that is not a skill")
+	}
+}
+
+func TestLastScriptInConversation(t *testing.T) {
+	prev := kiConversation
+	kiConversation = newConversationHistory()
+	t.Cleanup(func() { kiConversation = prev })
+
+	if s, _ := lastScriptInConversation(); s != "" {
+		t.Error("empty conversation should yield no script")
+	}
+	kiConversation.Add("a", "```bash\nfirst\n```")
+	kiConversation.Add("b", "no script here")
+	s, prompt := lastScriptInConversation()
+	if s != "first" || prompt != "a" {
+		t.Errorf("should find the script in the earlier turn, got %q / %q", s, prompt)
+	}
+}
+
+func TestSuggestLearnNoOpWhenNotInteractive(t *testing.T) {
+	// isInteractiveMode is false in tests; suggestLearn must not panic and must
+	// be a no-op regardless of conversation state.
+	prev := kiConversation
+	kiConversation = newConversationHistory()
+	t.Cleanup(func() { kiConversation = prev })
+	kiConversation.Add("a", "```bash\nx\n```")
+	suggestLearn(0) // must simply return
+}
+
 func TestLearnIsNotKIRequest(t *testing.T) {
 	// ki:learn must be classified as a local builtin, not routed to the model.
 	if isKIRequest("ki:learn backup") {

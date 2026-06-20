@@ -425,10 +425,13 @@ func handleKI(ctx context.Context, input string) {
 		audit.LogQuery(input, kiEngine.Name())
 	}
 
+	turnsBefore := len(kiConversation.Recent())
+
 	if kiPermissions.AgentMode {
 		if _, err := RunAgentLoop(ctx, kiEngine, input, filteredCtx, kiMemory, rateLimiter.MaxAgentSteps()); err != nil {
 			fmt.Fprintf(os.Stderr, "aish: ki error: %s\n", err)
 		}
+		suggestLearn(turnsBefore)
 		return
 	}
 
@@ -440,6 +443,7 @@ func handleKI(ctx context.Context, input string) {
 	if resp != nil && resp.SuggestedCommand != "" {
 		executeWithPermissions(resp.SuggestedCommand)
 	}
+	suggestLearn(turnsBefore)
 }
 
 func executeWithPermissions(command string) {

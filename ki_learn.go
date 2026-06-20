@@ -71,6 +71,54 @@ func reloadSkills() {
 	initSkills()
 }
 
+// lastScriptInConversation searches the conversation backwards for the most
+// recent turn whose response contains a fenced script, skipping scriptless
+// agent-loop follow-ups. Returns the script and the prompt that produced it.
+func lastScriptInConversation() (script, prompt string) {
+	turns := kiConversation.Recent()
+	for i := len(turns) - 1; i >= 0; i-- {
+		if s := extractScriptBlock(turns[i].Response); s != "" {
+			return s, turns[i].UserInput
+		}
+	}
+	return "", ""
+}
+
+// alreadyASkill reports whether a script is already saved as a skill, so the
+// learn hint is not shown for something the user already promoted.
+func alreadyASkill(script string) bool {
+	script = strings.TrimSpace(script)
+	for _, s := range loadedSkills {
+		if strings.TrimSpace(s.Script) == script {
+			return true
+		}
+	}
+	return false
+}
+
+// suggestLearn prints a discreet one-line hint when the run that just finished
+// produced a fresh, not-yet-learned script — so the user need not remember
+// ki:learn. turnsBefore is the conversation length before the run, so only newly
+// added turns are considered. No-op outside interactive mode.
+func suggestLearn(turnsBefore int) {
+	if !isInteractiveMode {
+		return
+	}
+	turns := kiConversation.Recent()
+	if turnsBefore < 0 || turnsBefore > len(turns) {
+		turnsBefore = 0 // sliding window shifted; fall back to scanning all
+	}
+	for i := len(turns) - 1; i >= turnsBefore; i-- {
+		if s := extractScriptBlock(turns[i].Response); s != "" {
+			if alreadyASkill(s) {
+				return
+			}
+			fmt.Fprintln(os.Stderr, "\033[2mTipp: ki:learn <name> merkt dieses Skript als wiederverwendbaren Skill.\033[0m")
+			return
+		}
+	}
+}
+
 // handleLearnCmd implements: ki:learn <name> [description].
 func handleLearnCmd(fields []string) {
 	if len(fields) < 2 {
@@ -81,17 +129,7 @@ func handleLearnCmd(fields []string) {
 	name := fields[1]
 	desc := strings.TrimSpace(strings.Join(fields[2:], " "))
 
-	// Find the most recent turn whose response contains a script. Agent-loop
-	// follow-up turns ("Results: ...") carry no script and are skipped.
-	turns := kiConversation.Recent()
-	var script, sourcePrompt string
-	for i := len(turns) - 1; i >= 0; i-- {
-		if s := extractScriptBlock(turns[i].Response); s != "" {
-			script = s
-			sourcePrompt = turns[i].UserInput
-			break
-		}
-	}
+	script, sourcePrompt := lastScriptInConversation()
 	if script == "" {
 		fmt.Fprintln(os.Stderr, "ki:learn: kein Skript in der letzten KI-Antwort gefunden.")
 		fmt.Fprintln(os.Stderr, "  Erst etwas bauen lassen, z.B.: ki bau mir ein skript das ...")
